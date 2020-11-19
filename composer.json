@@ -1,8 +1,8 @@
 {
-    "name": "bash/redis-bundle",
+    "name": "bash/cache-bundle",
     "type": "symfony-bundle",
     "license": "proprietary",
-    "description": "bash Redis bundle",
+    "description": "BashCache bundle - redis",
     "authors": [
         {
             "name": "Atanas Mitrev",
@@ -17,12 +17,12 @@
     ],
     "autoload": {
         "psr-4": {
-            "Bash\\Bundle\\RedisBundle\\": "src/"
+            "Bash\\Bundle\\CacheBundle\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Bash\\Bundle\\RedisBundle\\Test\\": "src/Tests/"
+            "Bash\\Bundle\\CacheBundle\\Test\\": "src/Tests/"
         }
     },
     "require": {
