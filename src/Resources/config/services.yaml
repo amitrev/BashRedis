@@ -6,3 +6,20 @@ services:
 
     Bash\Bundle\CacheBundle\:
         resource: '../../*'
+
+    bashcache.main:
+        class: Bash\Bundle\CacheBundle\Service\CacheService
+        factory: ['Bash\Bundle\CacheBundle\Service\RedisClientFactory', createRedis]
+        arguments:
+            $config: '%bash_cache.main%'
+
+    bashcache.counter:
+        class: Bash\Bundle\CacheBundle\Service\CacheService
+        factory: ['Bash\Bundle\CacheBundle\Service\RedisClientFactory', createRedis]
+        arguments:
+            $config: '%bash_cache.counter%'
+
+    Bash\Bundle\CacheBundle\Service\CacheService:
+        arguments:
+            $cacheData: '@bashcache.main'
+            $cacheCounter: '@bashcache.counter'

@@ -4,8 +4,8 @@ namespace Bash\Bundle\CacheBundle\Service;
 
 class RedisClientFactory
 {
-    public function __invoke(string $host, string $port, int $db = 0, int $timeout = 3)
+    public static function createRedis(array $config): RedisClient
     {
-        return new RedisClient($host, $port, $db, $timeout);
+        return new RedisClient($config['host'], $config['port'], $config['db'], $config['timeout']);
     }
 }

@@ -9,38 +9,36 @@ class Configuration implements ConfigurationInterface
 {
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $builder = new TreeBuilder('bash_redis');
+        $builder = new TreeBuilder('bash_cache');
 
         $builder
             ->getRootNode()
                 ->children()
-                    ->arrayNode('clients')
-                        ->addDefaultChildrenIfNoneSet('default')
-                        ->useAttributeAsKey('default')
-                        ->prototype('array')
+                    ->arrayNode('main')
                         ->children()
-                            ->arrayNode('$parameters')->prototype('variable')->end()->end()
-                            ->arrayNode('$options')->prototype('variable')->end()->end()
-//                            ->scalarNode('type')->end()
-//                            ->scalarNode('alias')->end()
-//                            ->scalarNode('dsn')->end()
+                            ->scalarNode('host')->end()
+                            ->scalarNode('port')->end()
+                            ->scalarNode('db')->end()
+                            ->scalarNode('timeout')->end()
+                        ->end()
+                    ->end()
+                    ->arrayNode('counter')
+                        ->children()
+                            ->scalarNode('host')->end()
+                            ->scalarNode('port')->end()
+                            ->scalarNode('db')->end()
+                            ->scalarNode('timeout')->end()
+                        ->end()
+                    ->end()
+                    ->arrayNode('expires')
+                        ->children()
+                            ->scalarNode('short')->end()
+                            ->scalarNode('medium')->end()
+                            ->scalarNode('long')->end()
                         ->end()
                     ->end()
                 ->end()
             ->end();
-
-//        >arrayNode('auth_mappings')
-//        ->prototype('array')
-//            ->children()
-//                ->scalarNode('is_bundle')->end()
-//                ->scalarNode('type')->end()
-//                ->scalarNode('dir')->end()
-//                ->scalarNode('prefix')->end()
-//                ->scalarNode('alias')->end()
-//            ->end()
-//        ->end()
-//        ->defaultValue([])
-//        ->end()
 
         return $builder;
     }

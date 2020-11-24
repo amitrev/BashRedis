@@ -14,7 +14,9 @@ class BashCacheExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $container->setParameter('bash_redis.clients', $config['clients']);
+        $container->setParameter('bash_cache.main', $config['main']);
+        $container->setParameter('bash_cache.counter', $config['counter']);
+        $container->setParameter('bash_cache.expires', $config['expires']);
 
         $loader = new YamlFileLoader(
             $container,
