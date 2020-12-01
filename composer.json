@@ -28,7 +28,8 @@
     "require": {
         "php": "^7.4",
         "ext-json": "*",
-        "symfony/framework-bundle": "^5.0"
+        "symfony/framework-bundle": "^5.0",
+        "predis/predis": "^1.1"
     },
     "require-dev": {
         "phpunit/phpunit": "*",

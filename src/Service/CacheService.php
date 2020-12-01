@@ -2,6 +2,8 @@
 
 namespace Bash\Bundle\CacheBundle\Service;
 
+use Predis\Client as RedisClient;
+
 use function json_encode;
 use function md5;
 
@@ -15,15 +17,13 @@ class CacheService
         $this->cacheData = $cacheData;
         $this->cacheCounter = $cacheCounter;
     }
-
     public function getData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null) {
         $cacheKey = $this->generateCacheKey($key);
-
         $data = $this->cacheData->get($cacheKey);
 
         return [$cacheKey, $data];
 
-        if (null !== $callback && null === $data) {
+        if (null === $data && null !== $callback) {
             $data = call_user_func_array($callback, $paramArr);
         }
 
