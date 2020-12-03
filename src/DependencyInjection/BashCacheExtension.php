@@ -16,7 +16,10 @@ class BashCacheExtension extends Extension
 
         $container->setParameter('bash_cache.main', $config['main']);
         $container->setParameter('bash_cache.counter', $config['counter']);
-        $container->setParameter('bash_cache.expires', $config['expires']);
+
+        $container->setParameter('bash_cache.expires.short', $config['expires']['short'] ?? 60);
+        $container->setParameter('bash_cache.expires.medium', $config['expires']['medium'] ?? 3600);
+        $container->setParameter('bash_cache.expires.long', $config['expires']['long'] ?? 86400);
 
         $loader = new YamlFileLoader(
             $container,
