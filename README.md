@@ -1,2 +1,1 @@
-# Symfony Bundle Skeleton
-
+# BashRedis Documentation
