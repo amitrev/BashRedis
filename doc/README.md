@@ -1,4 +1,4 @@
-# Documentation
+# BashRedis Documentation
 
 ```[
 // values from config/packages/bash_redis.yaml
