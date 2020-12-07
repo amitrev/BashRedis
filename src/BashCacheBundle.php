@@ -7,8 +7,8 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 class BashCacheBundle extends Bundle
 {
-    public function getContainerExtension()
+    public function getContainerExtension(): BashCacheExtension
     {
-       return new BashCacheExtension();
+        return new BashCacheExtension();
     }
 }
