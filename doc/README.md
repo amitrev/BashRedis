@@ -15,8 +15,8 @@ bash_cache:
       host: 127.0.0.1
       port: 6379
       db: 1
-      prefix: sportal
       timeout: 3
+      prefix: sportal
   expires:
     short: 60
     medium: 120
