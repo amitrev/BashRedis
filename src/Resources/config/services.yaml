@@ -1,3 +1,8 @@
+parameters:
+    short: '%bash_cache.expires.short%'
+    medium: '%bash_cache.expires.medium%'
+    long: '%bash_cache.expires.long%'
+
 services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.

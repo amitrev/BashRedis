@@ -2,7 +2,7 @@
 
 namespace Bash\Bundle\CacheBundle\Service;
 
-use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ParameterBag\ContainerBagInterface;
 
 class CacheExpireTimes
 {
@@ -10,11 +10,11 @@ class CacheExpireTimes
     private int $mediumExpire;
     private int $longExpire;
 
-    public function __construct(ContainerBuilder $container)
+    public function __construct(ContainerBagInterface $params)
     {
-        $this->shortExpire = $container->getParameter('bash_cache.expires.short');
-        $this->mediumExpire = $container->getParameter('bash_cache.expires.medium');
-        $this->longExpire = $container->getParameter('bash_cache.expires.long');
+        $this->shortExpire = (int) $params->get('short');
+        $this->mediumExpire = (int) $params->get('medium');
+        $this->longExpire = (int) $params->get('long');
     }
 
     public function getShortExpire(): int
