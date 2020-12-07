@@ -2,10 +2,10 @@
 
 namespace Bash\Bundle\CacheBundle\Service;
 
-use Predis\Client as RedisClient;
-
+use function implode;
 use function json_encode;
 use function md5;
+use Predis\Client as RedisClient;
 
 class CacheService
 {
@@ -19,33 +19,36 @@ class CacheService
         $this->cacheCounter = $cacheCounter;
     }
 
-    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null) {
-        $data = $this->getData($key);
+    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null, array $tags = [])
+    {
+        $data = $this->getData($key, $tags);
 
         if (null === $data && null !== $callback) {
-            $data = call_user_func_array($callback, $paramArr);
-            $status = $this->setData($key, $data, $expirationTime);
+            $data = \call_user_func_array($callback, $paramArr);
+            $status = $this->setData($key, $data, $expirationTime, $tags);
             //TODO: log on dev or not?
         }
 
         return $data;
     }
 
-    public function getData($key) {
-        $cacheKey = $this->generateCacheKey($key);
+    public function getData($key, array $tags = [])
+    {
+        $cacheKey = $this->generateCacheKey($key, $tags);
         $data = $this->cacheData->get($cacheKey);
 
         return json_decode($data, true);
     }
 
-    public function setData($key, $data, ?int $expirationTime = null) {
-        $cacheKey = $this->generateCacheKey($key);
+    public function setData($key, $data, ?int $expirationTime = null, array $tags = [])
+    {
+        $cacheKey = $this->generateCacheKey($key, $tags);
 
         $moreParams = [];
-        if ( null !== $expirationTime ) {
+        if (null !== $expirationTime) {
             $moreParams = [
                 $this->expireType,
-                $expirationTime
+                $expirationTime,
             ];
         }
 
@@ -54,9 +57,9 @@ class CacheService
         return $this->cacheData->set($cacheKey, $data, ...$moreParams);
     }
 
-    public function delData($key): void
+    public function delData($key, array $tags = []): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->generateCacheKey($key, $tags);
         $this->cacheData->del($cacheKey);
     }
 
@@ -68,7 +71,7 @@ class CacheService
 
         foreach ($patterns as $pattern) {
             $keys = $this->cacheData->keys($pattern);
-            if ( !empty($keys) ) {
+            if (!empty($keys)) {
                 foreach ($keys as $key) {
                     $this->cacheData->del($key);
                 }
@@ -76,21 +79,23 @@ class CacheService
         }
     }
 
-    public function getCounter($key) {
-        $cacheKey = $this->generateCacheKey($key);
+    public function getCounter($key, array $tags = [])
+    {
+        $cacheKey = $this->generateCacheKey($key, $tags);
         $data = $this->cacheCounter->get($cacheKey);
 
         return json_decode($data, true);
     }
 
-    public function setCounter($key, $data, ?int $expirationTime = null) {
-        $cacheKey = $this->generateCacheKey($key);
+    public function setCounter($key, $data, ?int $expirationTime = null, array $tags = [])
+    {
+        $cacheKey = $this->generateCacheKey($key, $tags);
 
         $moreParams = [];
-        if ( null !== $expirationTime ) {
+        if (null !== $expirationTime) {
             $moreParams = [
                 $this->expireType,
-                $expirationTime
+                $expirationTime,
             ];
         }
 
@@ -99,29 +104,32 @@ class CacheService
         return $this->cacheCounter->set($cacheKey, $data, ...$moreParams);
     }
 
-    public function delCounter($key): void
+    public function delCounter($key, array $tags): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->generateCacheKey($key, $tags);
         $this->cacheCounter->del($cacheKey);
     }
 
-    public function incrementCounter($key): void
+    public function incrementCounter($key, array $tags = []): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->generateCacheKey($key, $tags);
         $this->cacheCounter->incr($cacheKey);
     }
 
-    private function generateCacheKey($value): string
+    private function generateCacheKey($value, array $tags): string
     {
         $cacheKey = $value;
-        if (is_array($value)) {
+        if (\is_array($value)) {
             if (isset($value['base'])) {
                 $base = $value['base'];
                 unset($value['base']);
+
                 return $base . '_' . md5(json_encode($value));
             }
+
             return md5(json_encode($value));
         }
-        return $cacheKey;
+
+        return $cacheKey . implode(':', $tags);
     }
 }
