@@ -2,10 +2,12 @@
 
 namespace Bash\Bundle\CacheBundle\Service;
 
+use Predis\Client as RedisClient;
+
 use function implode;
 use function json_encode;
 use function md5;
-use Predis\Client as RedisClient;
+use function call_user_func_array;
 
 class CacheService
 {
@@ -24,9 +26,9 @@ class CacheService
         $data = $this->getData($key, $tags);
 
         if (null === $data && null !== $callback) {
-            $data = \call_user_func_array($callback, $paramArr);
+            $data = call_user_func_array($callback, $paramArr);
             $status = $this->setData($key, $data, $expirationTime, $tags);
-            //TODO: log on dev or not?
+            //TODO: log on dev or not? @ver:1
         }
 
         return $data;
@@ -37,7 +39,8 @@ class CacheService
         $cacheKey = $this->generateCacheKey($key, $tags);
         $data = $this->cacheData->get($cacheKey);
 
-        return json_decode($data, true);
+        //TODO: use Symfony Serialize @ver:1
+        return unserialize($data);
     }
 
     public function setData($key, $data, ?int $expirationTime = null, array $tags = [])
@@ -52,7 +55,8 @@ class CacheService
             ];
         }
 
-        $data = json_encode($data);
+        //TODO: use Symfony Serialize @ver:1
+        $data = serialize($data);
 
         return $this->cacheData->set($cacheKey, $data, ...$moreParams);
     }
@@ -84,7 +88,8 @@ class CacheService
         $cacheKey = $this->generateCacheKey($key, $tags);
         $data = $this->cacheCounter->get($cacheKey);
 
-        return json_decode($data, true);
+        //TODO: use Symfony Serialize @ver:1
+        return unserialize($data);
     }
 
     public function setCounter($key, $data, ?int $expirationTime = null, array $tags = [])
@@ -99,7 +104,8 @@ class CacheService
             ];
         }
 
-        $data = json_encode($data);
+        //TODO: use Symfony Serialize @ver:1
+        $data = serialize($data);
 
         return $this->cacheCounter->set($cacheKey, $data, ...$moreParams);
     }
