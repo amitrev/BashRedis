@@ -2,12 +2,9 @@
 
 namespace Bash\Bundle\CacheBundle\Service;
 
-use Predis\Client as RedisClient;
-
-use function implode;
 use function json_encode;
 use function md5;
-use function call_user_func_array;
+use Predis\Client as RedisClient;
 
 class CacheService
 {
@@ -21,31 +18,31 @@ class CacheService
         $this->cacheCounter = $cacheCounter;
     }
 
-    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null, array $tags = [])
+    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null)
     {
-        $data = $this->getData($key, $tags);
+        $data = $this->getData($key);
 
-        if (null === $data && null !== $callback) {
-            $data = call_user_func_array($callback, $paramArr);
-            $status = $this->setData($key, $data, $expirationTime, $tags);
-            //TODO: log on dev or not? @ver:1
+        if (false === $data && null !== $callback) {
+            $data = \call_user_func_array($callback, $paramArr);
+            $status = $this->setData($key, $data, $expirationTime);
+            //TODO: log on dev or not?
         }
 
         return $data;
     }
 
-    public function getData($key, array $tags = [])
+    public function getData($key)
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->get($cacheKey);
 
         //TODO: use Symfony Serialize @ver:1
         return unserialize($data);
     }
 
-    public function setData($key, $data, ?int $expirationTime = null, array $tags = [])
+    public function setData($key, $data, ?int $expirationTime = null)
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
 
         $moreParams = [];
         if (null !== $expirationTime) {
@@ -61,9 +58,9 @@ class CacheService
         return $this->cacheData->set($cacheKey, $data, ...$moreParams);
     }
 
-    public function delData($key, array $tags = []): void
+    public function delData($key): void
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
         $this->cacheData->del($cacheKey);
     }
 
@@ -83,18 +80,28 @@ class CacheService
         }
     }
 
-    public function getCounter($key, array $tags = [])
+    public function getAndSetCounter($key, int $count, int $expirationTime = null): int
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
-        $data = $this->cacheCounter->get($cacheKey);
+        $currentCount = $this->getCounter($key);
 
-        //TODO: use Symfony Serialize @ver:1
-        return unserialize($data);
+        if (false === $currentCount && null !== $count) {
+            $currentCount = $count;
+            $this->setCounter($key, $currentCount, $expirationTime);
+        }
+
+        return (int) $currentCount;
     }
 
-    public function setCounter($key, $data, ?int $expirationTime = null, array $tags = [])
+    public function getCounter($key): int
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
+
+        return $this->cacheCounter->get($cacheKey);
+    }
+
+    public function setCounter($key, $data, ?int $expirationTime = null): void
+    {
+        $cacheKey = $this->generateCacheKey($key);
 
         $moreParams = [];
         if (null !== $expirationTime) {
@@ -104,25 +111,22 @@ class CacheService
             ];
         }
 
-        //TODO: use Symfony Serialize @ver:1
-        $data = serialize($data);
-
-        return $this->cacheCounter->set($cacheKey, $data, ...$moreParams);
+        $this->cacheCounter->set($cacheKey, $data, ...$moreParams);
     }
 
-    public function delCounter($key, array $tags): void
+    public function delCounter($key): void
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
         $this->cacheCounter->del($cacheKey);
     }
 
-    public function incrementCounter($key, array $tags = []): void
+    public function incrementCounter($key): void
     {
-        $cacheKey = $this->generateCacheKey($key, $tags);
+        $cacheKey = $this->generateCacheKey($key);
         $this->cacheCounter->incr($cacheKey);
     }
 
-    private function generateCacheKey($value, array $tags): string
+    private function generateCacheKey($value): string
     {
         $cacheKey = $value;
         if (\is_array($value)) {
@@ -136,6 +140,6 @@ class CacheService
             return md5(json_encode($value));
         }
 
-        return $cacheKey . implode(':', $tags);
+        return $cacheKey;
     }
 }
