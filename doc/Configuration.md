@@ -1,7 +1,7 @@
 # BashRedis Documentation
 
 ```[
-// values from config/packages/bash_redis.yaml
+// values from config/packages/bash_cache.yaml
 bash_cache:
   main:
       scheme: tcp
