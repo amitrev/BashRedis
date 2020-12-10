@@ -84,7 +84,7 @@ class CacheService
     {
         $currentCount = $this->getCounter($key);
 
-        if (false === $currentCount && null !== $count) {
+        if (null === $currentCount && null !== $count) {
             $currentCount = $count;
             $this->setCounter($key, $currentCount, $expirationTime);
         }
@@ -92,7 +92,7 @@ class CacheService
         return (int) $currentCount;
     }
 
-    public function getCounter($key): int
+    public function getCounter($key): ?int
     {
         $cacheKey = $this->generateCacheKey($key);
 
