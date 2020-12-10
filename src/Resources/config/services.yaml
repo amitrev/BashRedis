@@ -1,0 +1,30 @@
+parameters:
+    short: '%bash_cache.expires.short%'
+    medium: '%bash_cache.expires.medium%'
+    long: '%bash_cache.expires.long%'
+
+services:
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        public: false       # Allows optimizing the container by removing unused services; this also means
+
+    Bash\Bundle\CacheBundle\:
+        resource: '../../*'
+
+    bashcache.main:
+        class: Bash\Bundle\CacheBundle\Service\CacheService
+        factory: ['Bash\Bundle\CacheBundle\Service\RedisClientFactory', createRedis]
+        arguments:
+            $config: '%bash_cache.main%'
+
+    bashcache.counter:
+        class: Bash\Bundle\CacheBundle\Service\CacheService
+        factory: ['Bash\Bundle\CacheBundle\Service\RedisClientFactory', createRedis]
+        arguments:
+            $config: '%bash_cache.counter%'
+
+    Bash\Bundle\CacheBundle\Service\CacheService:
+        arguments:
+            $cacheData: '@bashcache.main'
+            $cacheCounter: '@bashcache.counter'

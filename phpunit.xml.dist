@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="./vendor/autoload.php" colors="true">
+    <php>
+        <ini name="error_reporting" value="-1" />
+    </php>
+    <testsuites>
+        <testsuite name="unit">
+            <directory>src/Tests</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">src</directory>
+            <exclude>
+                <directory>src/Resources</directory>
+                <directory>src/DependencyInjection</directory>
+            </exclude>
+        </whitelist>
+    </filter>
+</phpunit>

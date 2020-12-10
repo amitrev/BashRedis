@@ -1,0 +1,2 @@
+# BashRedis Documentation
+Coming soon

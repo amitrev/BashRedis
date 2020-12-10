@@ -1,0 +1,47 @@
+{
+    "name": "bash/cache-bundle",
+    "type": "symfony-bundle",
+    "license": "proprietary",
+    "description": "BashCache bundle - redis",
+    "authors": [
+        {
+            "name": "Atanas Mitrev",
+            "email": "amitrev@gmail.com",
+            "role": "Ninja"
+        }
+    ],
+    "keywords": [
+        "redis",
+        "symfony",
+        "cache"
+    ],
+    "autoload": {
+        "psr-4": {
+            "Bash\\Bundle\\CacheBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Bash\\Bundle\\CacheBundle\\Test\\": "src/Tests/"
+        }
+    },
+    "require": {
+        "php": "^7.4",
+        "ext-json": "*",
+        "symfony/framework-bundle": "^5.0",
+        "predis/predis": "^1.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*",
+        "friendsofphp/php-cs-fixer": "^2.16"
+    },
+    "scripts": {
+        "cs-fix-dry": "php-cs-fixer fix --config=.php_cs.dist -v --using-cache=no --dry-run",
+        "cs-fix": "php-cs-fixer fix --config=.php_cs.dist -v --using-cache=no",
+        "test": "phpunit --colors=always",
+        "testcover": "phpunit --coverage-text --colors=never"
+    },
+    "scripts-descriptions": {
+        "cs-fix": "Run php-cs-fixer in dry run mode (linting)"
+    }
+}
