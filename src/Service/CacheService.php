@@ -70,10 +70,12 @@ class CacheService
             return;
         }
 
+        $prefix = (string) $this->cacheData->getOptions()->prefix;
         foreach ($patterns as $pattern) {
             $keys = $this->cacheData->keys($pattern);
             if (!empty($keys)) {
                 foreach ($keys as $key) {
+                    $key = str_replace($prefix, '', $key);
                     $this->cacheData->del($key);
                 }
             }
