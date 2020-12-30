@@ -122,6 +122,11 @@ class CacheService
         $this->cacheCounter->del($cacheKey);
     }
 
+    public function getCountersByPatterns(string $pattern): array
+    {
+        return $this->cacheCounter->keys($pattern);
+    }
+
     public function incrementCounter($key): void
     {
         $cacheKey = $this->generateCacheKey($key);
