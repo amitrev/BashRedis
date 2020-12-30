@@ -124,7 +124,16 @@ class CacheService
 
     public function getCountersByPattern(string $pattern): array
     {
-        return $this->cacheCounter->keys($pattern);
+        $keys = $this->cacheCounter->keys($pattern);
+        $counters = [];
+
+        if (!empty($keys)) {
+            foreach ($keys as $key) {
+                $counters[$key] = $this->getCounter($key);
+            }
+        }
+
+        return $counters;
     }
 
     public function incrementCounter($key): void
