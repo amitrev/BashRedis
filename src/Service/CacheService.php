@@ -122,7 +122,7 @@ class CacheService
         $this->cacheCounter->del($cacheKey);
     }
 
-    public function getCountersByPatterns(string $pattern): array
+    public function getCountersByPattern(string $pattern): array
     {
         return $this->cacheCounter->keys($pattern);
     }
