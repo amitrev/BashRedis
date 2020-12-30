@@ -129,7 +129,8 @@ class CacheService
 
         if (!empty($keys)) {
             foreach ($keys as $key) {
-                $counters[$key] = $this->getCounter($key);
+                [$prefix, $key] = explode(':', $key);
+                $counters[$key] = $this->cacheCounter->get($key);
             }
         }
 
