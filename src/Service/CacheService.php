@@ -10,12 +10,14 @@ class CacheService
 {
     private RedisClient $cacheData;
     private RedisClient $cacheCounter;
+    private CacheKeyService $cacheKeys;
     private string $expireType = 'EX';
 
-    public function __construct(RedisClient $cacheData, RedisClient $cacheCounter)
+    public function __construct(RedisClient $cacheData, RedisClient $cacheCounter, CacheKeyService $cacheKeys)
     {
         $this->cacheData = $cacheData;
         $this->cacheCounter = $cacheCounter;
+        $this->cacheKeys = $cacheKeys;
     }
 
     public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null)
@@ -33,7 +35,7 @@ class CacheService
 
     public function getData($key)
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
         $data = $this->cacheData->get($cacheKey);
 
         //TODO: use Symfony Serialize @ver:1
@@ -42,7 +44,7 @@ class CacheService
 
     public function setData($key, $data, ?int $expirationTime = null)
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
 
         $moreParams = [];
         if (null !== $expirationTime) {
@@ -60,7 +62,7 @@ class CacheService
 
     public function delData($key): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
         $this->cacheData->del($cacheKey);
     }
 
@@ -96,14 +98,14 @@ class CacheService
 
     public function getCounter($key): ?int
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
 
         return $this->cacheCounter->get($cacheKey);
     }
 
     public function setCounter($key, $data, ?int $expirationTime = null): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
 
         $moreParams = [];
         if (null !== $expirationTime) {
@@ -118,7 +120,7 @@ class CacheService
 
     public function delCounter($key): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
         $this->cacheCounter->del($cacheKey);
     }
 
@@ -139,24 +141,7 @@ class CacheService
 
     public function incrementCounter($key): void
     {
-        $cacheKey = $this->generateCacheKey($key);
+        $cacheKey = $this->cacheKeys->generateCacheKey($key);
         $this->cacheCounter->incr($cacheKey);
-    }
-
-    private function generateCacheKey($value): string
-    {
-        $cacheKey = $value;
-        if (\is_array($value)) {
-            if (isset($value['base'])) {
-                $base = $value['base'];
-                unset($value['base']);
-
-                return $base . '_' . md5(json_encode($value));
-            }
-
-            return md5(json_encode($value));
-        }
-
-        return $cacheKey;
     }
 }

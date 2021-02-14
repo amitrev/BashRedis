@@ -28,3 +28,4 @@ services:
         arguments:
             $cacheData: '@bashcache.main'
             $cacheCounter: '@bashcache.counter'
+            $cacheKeys: '@Bash\Bundle\CacheBundle\Service\CacheKeyService'
