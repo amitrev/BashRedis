@@ -20,7 +20,7 @@ class CacheService
 
     public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null)
     {
-        $data = $this->getData($key);
+        $data = $this->getData($key, $expirationTime);
 
         if (false === $data && null !== $callback) {
             $data = \call_user_func_array($callback, $paramArr);
@@ -31,10 +31,14 @@ class CacheService
         return $data;
     }
 
-    public function getData($key)
+    public function getData($key, $resetTtl = null)
     {
         $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->get($cacheKey);
+
+        if (null !== $data && null !== $resetTtl) {
+            $this->cacheData->expire($cacheKey, $resetTtl);
+        }
 
         //TODO: use Symfony Serialize @ver:1
         return unserialize($data);
