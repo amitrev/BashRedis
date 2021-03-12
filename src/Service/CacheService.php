@@ -147,6 +147,12 @@ class CacheService
         $this->cacheCounter->incr($cacheKey);
     }
 
+    public function decrementCounter($key): void
+    {
+        $cacheKey = $this->generateCacheKey($key);
+        $this->cacheCounter->decr($cacheKey);
+    }
+
     private function generateCacheKey($value): string
     {
         $cacheKey = $value;
