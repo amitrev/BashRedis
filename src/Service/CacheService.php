@@ -18,9 +18,9 @@ class CacheService
         $this->cacheCounter = $cacheCounter;
     }
 
-    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null)
+    public function getAndSetData($key, ?callable $callback = null, ?array $paramArr = null, ?int $expirationTime = null, bool $ttlRefresh = true)
     {
-        $data = $this->getData($key, $expirationTime);
+        $data = $this->getData($key, $expirationTime, $ttlRefresh);
 
         if (false === $data && null !== $callback) {
             $data = \call_user_func_array($callback, $paramArr);
@@ -31,12 +31,12 @@ class CacheService
         return $data;
     }
 
-    public function getData($key, $resetTtl = null)
+    public function getData($key, $resetTtl = null, bool $ttlRefresh = true)
     {
         $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->get($cacheKey);
 
-        if (null !== $data && null !== $resetTtl) {
+        if (null !== $data && null !== $resetTtl && true === $ttlRefresh) {
             $this->cacheData->expire($cacheKey, $resetTtl);
         }
 
