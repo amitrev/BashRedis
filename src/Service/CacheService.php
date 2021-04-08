@@ -62,6 +62,21 @@ class CacheService
         return $this->cacheData->set($cacheKey, $data, ...$moreParams);
     }
 
+    public function hgetAllDataByPattern(string $pattern): array
+    {
+        $keys = $this->cacheData->keys($pattern);
+        $counters = [];
+
+        if (!empty($keys)) {
+            foreach ($keys as $key) {
+                [$prefix, $key] = explode(':', $key);
+                $counters[$key] = $this->cacheData->hgetall($key);
+            }
+        }
+
+        return $counters;
+    }
+
     public function delData($key): void
     {
         $cacheKey = $this->generateCacheKey($key);
