@@ -83,7 +83,7 @@ class CacheService
         $this->cacheData->del($cacheKey);
     }
 
-    public function hset($key, string $field, $data, ?int $expirationTime = null): void
+    public function hsetData($key, string $field, $data, ?int $expirationTime = null): void
     {
         $key = $this->generateCacheKey($key);
 
@@ -96,7 +96,7 @@ class CacheService
         }
     }
 
-    public function hget($key, $field, ?int $resetTtl = null, bool $ttlRefresh = true)
+    public function hgetData($key, $field, ?int $resetTtl = null, bool $ttlRefresh = true)
     {
         $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->hget($cacheKey, $field);
@@ -109,7 +109,7 @@ class CacheService
         return unserialize($data);
     }
 
-    public function hmget($key, $fields, ?int $resetTtl = null, bool $ttlRefresh = true)
+    public function hmgetData($key, $fields, ?int $resetTtl = null, bool $ttlRefresh = true)
     {
         $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->hmget($cacheKey, $fields);
@@ -126,7 +126,7 @@ class CacheService
         return $result;
     }
 
-    public function hmset($key, array $keyValues, ?int $expirationTime = null)
+    public function hmsetData($key, array $keyValues, ?int $expirationTime = null)
     {
         $key = $this->generateCacheKey($key);
 
