@@ -31,13 +31,13 @@ class CacheService
         return $data;
     }
 
-    public function getData($key, $resetTtl = null, bool $ttlRefresh = true)
+    public function getData($key, $expirationTime = null, bool $ttlRefresh = true)
     {
         $cacheKey = $this->generateCacheKey($key);
         $data = $this->cacheData->get($cacheKey);
 
-        if (null !== $data && null !== $resetTtl && true === $ttlRefresh) {
-            $this->cacheData->expire($cacheKey, $resetTtl);
+        if (null !== $data && null !== $expirationTime && true === $ttlRefresh) {
+            $this->cacheData->expire($cacheKey, $expirationTime);
         }
 
         //TODO: use Symfony Serialize @ver:1
