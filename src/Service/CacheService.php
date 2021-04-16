@@ -62,10 +62,83 @@ class CacheService
         return $this->cacheData->set($cacheKey, $data, ...$moreParams);
     }
 
+    public function hgetAllDataByPattern(string $pattern): array
+    {
+        $keys = $this->cacheData->keys($pattern);
+        $counters = [];
+
+        if (!empty($keys)) {
+            foreach ($keys as $key) {
+                [$prefix, $key] = explode(':', $key);
+                $counters[$key] = $this->cacheData->hgetall($key);
+            }
+        }
+
+        return $counters;
+    }
+
     public function delData($key): void
     {
         $cacheKey = $this->generateCacheKey($key);
         $this->cacheData->del($cacheKey);
+    }
+
+    public function hsetData($key, string $field, $data, ?int $expirationTime = null): void
+    {
+        $key = $this->generateCacheKey($key);
+
+        $data = serialize($data);
+
+        $this->cacheData->hset($key, $field, $data);
+
+        if (null !== $expirationTime) {
+            $this->cacheData->expire($key, $expirationTime);
+        }
+    }
+
+    public function hgetData($key, $field, ?int $resetTtl = null, bool $ttlRefresh = true)
+    {
+        $cacheKey = $this->generateCacheKey($key);
+        $data = $this->cacheData->hget($cacheKey, $field);
+
+        if (null !== $data && null !== $resetTtl && true === $ttlRefresh) {
+            $this->cacheData->expire($cacheKey, $resetTtl);
+        }
+
+        //TODO: use Symfony Serialize @ver:1
+        return unserialize($data);
+    }
+
+    public function hmgetData($key, $fields, ?int $resetTtl = null, bool $ttlRefresh = true)
+    {
+        $cacheKey = $this->generateCacheKey($key);
+        $data = $this->cacheData->hmget($cacheKey, $fields);
+
+        if (null !== $data && null !== $resetTtl && true === $ttlRefresh) {
+            $this->cacheData->expire($cacheKey, $resetTtl);
+        }
+
+        $result = [];
+        foreach ($data as $i => $item) {
+            $result[$fields[$i]] = unserialize($item);
+        }
+
+        return $result;
+    }
+
+    public function hmsetData($key, array $keyValues, ?int $expirationTime = null)
+    {
+        $key = $this->generateCacheKey($key);
+
+        foreach ($keyValues as $field => $data) {
+            $keyValues[$field] = serialize($data);
+        }
+
+        $this->cacheData->hmset($key, $keyValues);
+
+        if (null !== $expirationTime) {
+            $this->cacheData->expire($key, $expirationTime);
+        }
     }
 
     public function delDataByPatterns(array $patterns): void
