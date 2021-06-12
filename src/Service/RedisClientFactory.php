@@ -10,11 +10,12 @@ class RedisClientFactory
     {
         return new RedisClient(
             [
-                'scheme' => 'tcp',
+                'scheme' => $config['scheme'],
                 'host' => $config['host'],
                 'port' => $config['port'],
                 'database' => $config['db'],
                 'timeout' => $config['timeout'],
+                'persistent' => 1
             ],
             [
                 'prefix' => $config['prefix'] . ':',
