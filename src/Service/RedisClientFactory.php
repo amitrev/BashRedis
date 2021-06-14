@@ -8,18 +8,16 @@ class RedisClientFactory
 {
     public static function createRedis(array $config): RedisClient
     {
-
         $clientConfig = [
             'scheme' => $config['scheme'],
             'database' => $config['db'],
             'timeout' => $config['timeout'],
-            'persistent' => 1
+            'persistent' => $config['persistent'],
         ];
 
         if (isset($config['path'])) {
             $clientConfig['path'] = $config['path'];
-        }
-        else {
+        } else {
             $clientConfig['host'] = $config['host'];
             $clientConfig['port'] = $config['port'];
         }
