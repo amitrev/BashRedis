@@ -2,7 +2,7 @@
     "name": "bash/cache-bundle",
     "type": "symfony-bundle",
     "license": "proprietary",
-    "description": "BashCache bundle - redis",
+    "description": "BashCache Bundle",
     "authors": [
         {
             "name": "Atanas Mitrev",
@@ -28,8 +28,8 @@
     "require": {
         "php": "^7.4",
         "ext-json": "*",
-        "symfony/framework-bundle": "^5.0",
-        "predis/predis": "^1.1"
+        "ext-redis": "*",
+        "symfony/framework-bundle": "^5.0"
     },
     "require-dev": {
         "phpunit/phpunit": "*",
