@@ -30,6 +30,76 @@ class Client implements ClientInterface
         }
     }
 
+    public function get(array $key, ?int $expire = null, bool $ttlRefresh = false)
+    {
+        if ($this->client->isConnected()) {
+            $cacheKey = $this->generateKey($key);
+
+            $data = $this->client->get($cacheKey);
+
+            if ($data === false) {
+                return false;
+            }
+
+            if ($expire !== null && $ttlRefresh === true) {
+                $this->client->expire($cacheKey, $expire);
+            }
+
+            return unserialize($data);
+        }
+
+        return false;
+    }
+
+    public function set(array $key, $data, ?int $expire = null): bool
+    {
+        if ($this->client->isConnected()) {
+            $cacheKey = $this->generateKey($key);
+
+            $moreParams = [];
+            if ($expire !== null) {
+                $moreParams = [
+                    'EX',
+                    $expire,
+                ];
+            }
+
+            $data = serialize($data);
+
+            return $this->client->set($cacheKey, $data, ...$moreParams);
+        }
+
+        return false;
+    }
+
+    public function del($key): void
+    {
+        if ($this->client->isConnected()) {
+            $cacheKey = $this->generateKey($key);
+            $this->client->del($cacheKey);
+        }
+    }
+
+    public function getAndSet($key, ?callable $callback = null, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true)
+    {
+        if ($this->client->isConnected()) {
+            $data = $this->get($key);
+
+            if (false === $data && null !== $callback) {
+                $data = \call_user_func_array($callback, $params);
+                $status = $this->set($key, $data, $expire);
+
+                if ($status === false) {
+                    //TODO: exception or silent log?
+                }
+            }
+
+            return $data;
+        }
+
+        return null;
+    }
+
     public function __call(string $command, array $arguments = [])
     {
         if ($this->client->isConnected()) {
@@ -38,7 +108,6 @@ class Client implements ClientInterface
 
         return null;
     }
-
 
     public function getExpireTime(string $key): int
     {
@@ -49,8 +118,21 @@ class Client implements ClientInterface
         throw new InvalidExpireKeyException('Key (' . $key . ') not found');
     }
 
-    public function generateKey(array $keyArray): string
+    public function generateKey($value): string
     {
-        return sprintf('%s.%s', $this->prefix, 'temp');
+        $cacheKey = $value;
+
+        if (\is_array($value)) {
+            $cacheKey = md5(json_encode($value));
+
+            if (isset($value['base'])) {
+                $base = $value['base'];
+                unset($value['base']);
+
+                $cacheKey = $base . '_' . md5(json_encode($value));
+            }
+        }
+
+        return sprintf('%s:%s', $this->prefix, $cacheKey);
     }
 }
