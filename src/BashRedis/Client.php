@@ -8,14 +8,10 @@ use Redis;
 class Client implements ClientInterface
 {
     private Redis $client;
-
-    private string $prefix;
-
     private array $expires;
 
     public function __construct(?array $parameters = null, ?array $options = null)
     {
-        $this->prefix = $options['prefix'] ?? '';
         $this->expires = $options['expires'] ?? [];
         $this->client = new Redis();
 
@@ -26,11 +22,13 @@ class Client implements ClientInterface
         }
 
         if ($connect) {
-            $this->select($parameters['database']);
+            $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? '' . ':');
+            $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
+            $this->client->select($parameters['database']);
         }
     }
 
-    public function get(array $key, ?int $expire = null, bool $ttlRefresh = false)
+    public function get($key, ?int $expire = null, bool $ttlRefresh = false)
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
@@ -45,13 +43,13 @@ class Client implements ClientInterface
                 $this->client->expire($cacheKey, $expire);
             }
 
-            return unserialize($data);
+            return $data;
         }
 
         return false;
     }
 
-    public function set(array $key, $data, ?int $expire = null): bool
+    public function set($key, $data, ?int $expire = null): bool
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
@@ -63,8 +61,6 @@ class Client implements ClientInterface
                     $expire,
                 ];
             }
-
-            $data = serialize($data);
 
             return $this->client->set($cacheKey, $data, ...$moreParams);
         }
@@ -133,6 +129,6 @@ class Client implements ClientInterface
             }
         }
 
-        return sprintf('%s:%s', $this->prefix, $cacheKey);
+        return $cacheKey;
     }
 }
