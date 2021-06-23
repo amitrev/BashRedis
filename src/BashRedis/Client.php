@@ -3,6 +3,7 @@
 namespace Bash\Bundle\CacheBundle\BashRedis;
 
 use Bash\Bundle\CacheBundle\Exception\InvalidExpireKeyException;
+use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
 use Redis;
 
 class Client implements ClientInterface
@@ -78,7 +79,7 @@ class Client implements ClientInterface
                 $status = $this->set($key, $data, $expire);
 
                 if ($status === false) {
-                    //TODO: exception or silent log?
+                    throw new WriteOperationFailedException('Problem with write to key ' . $key);
                 }
             }
 

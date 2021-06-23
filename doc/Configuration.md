@@ -7,6 +7,7 @@ bash_cache:
   clients:
     main:
       $options:
+        prefix: sportal
         expires:
           short: 60
       $parameters:
@@ -16,6 +17,7 @@ bash_cache:
           timeout: 3
     counter:
       $options:
+        persistent: counters
         prefix: sportal
         expires:
           long: 60
@@ -24,6 +26,17 @@ bash_cache:
         port: 6379
         database: 1
         timeout: 3
+    storage:
+      $options:
+        prefix: storage
+        expires:
+          long: 3600
+      $parameters:
+        dsn: tcp://127.0.0.1
+        port: 6379
+        database: 2
+        timeout: 3
+
 ```
 
 ### Step 2
