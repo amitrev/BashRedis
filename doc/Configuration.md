@@ -45,3 +45,26 @@ bash_cache:
     Bash\Bundle\CacheBundle\BashRedis\Client $mainRedis: '@bash_cache.main'
     Bash\Bundle\CacheBundle\BashRedis\Client $counterRedis: '@bash_cache.counter'
 ```
+
+or
+
+```
+class IndexController extends AbstractController
+{
+    /**
+     * @Route("/",priority=100, methods="GET", name="homepage")
+     */
+    public function __invoke(ContainerInterface $container): Response
+    {
+        dump($container->get('bash_cache.main'));
+        dump($container->get('bash_cache.counter'));
+        dump($container->get('bash_cache.storage'));
+
+        $number = rand(0, 100);
+
+        return new Response(
+            '<html><body>'.$number.'</body></html>'
+        );
+    }
+}
+```
