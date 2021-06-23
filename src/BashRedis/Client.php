@@ -54,15 +54,7 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
 
-            $moreParams = [];
-            if ($expire !== null) {
-                $moreParams = [
-                    'EX',
-                    $expire,
-                ];
-            }
-
-            return $this->client->set($cacheKey, $data, ...$moreParams);
+            return $this->client->set($cacheKey, $data, $expire);
         }
 
         return false;
