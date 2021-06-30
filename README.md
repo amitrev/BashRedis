@@ -2,9 +2,9 @@
 
 ## Requires
     php: 7.4+
-    predis/predis: 1.1+
+    phpredis
     symfony/framework-bundle: 5.0+
 
-## Install
+## Install && Config
 1. composer require bash/cache-bundle
-2. Create bash_cache.yaml with config (see more in doc/Configuration.md)
+2. more about config: ``doc/Configuration.md``
