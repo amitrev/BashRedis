@@ -2,7 +2,7 @@
 
 ### Step 1
 ```
-# /config/packages/bash_cahce.yaml
+# /config/packages/bash_cache.yaml
 bash_cache:
   clients:
     main:
