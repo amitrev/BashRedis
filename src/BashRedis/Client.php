@@ -2,11 +2,10 @@
 
 namespace Bash\Bundle\CacheBundle\BashRedis;
 
-use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\InvalidExpireKeyException;
+use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
-
 use Redis;
 
 class Client implements ClientInterface
@@ -76,11 +75,11 @@ class Client implements ClientInterface
             $data = $this->get($key);
 
             if (false === $data && null !== $dataCarry) {
-                if (is_callable($dataCarry) ) {
-                    if (null !== $params ) {
+                if (\is_callable($dataCarry)) {
+                    if (null !== $params) {
                         $data = \call_user_func_array($dataCarry, $params);
                     } else {
-                       throw new InvalidInputArgumentsException('Params argument cannot be null');
+                        throw new InvalidInputArgumentsException('Params argument cannot be null');
                     }
                 } else {
                     $data = $dataCarry;
@@ -172,7 +171,7 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
             $data = $this->client->hMGet($key, $fields);
-            if ( !empty($data) && true === $ttlRefresh && null !== $expire ) {
+            if (!empty($data) && true === $ttlRefresh && null !== $expire) {
                 $this->client->expire($key, $ttlRefresh);
             }
 
