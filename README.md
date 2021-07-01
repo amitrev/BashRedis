@@ -3,6 +3,7 @@
 ## Requires
     php: 7.4+
     phpredis
+    igbinary
     symfony/framework-bundle: 5.0+
 
 ## Install && Config
