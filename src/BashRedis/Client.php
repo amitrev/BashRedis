@@ -98,7 +98,7 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
-    public function hset($key, string $field, $data, ?int $expire = null): bool
+    public function hset($key, string $field, $data, ?int $expire = null): void
     {
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
@@ -110,8 +110,6 @@ class Client implements ClientInterface
             if (null !== $expire) {
                 $this->client->expire($key, $expire);
             }
-
-            return (bool)$status;
         }
 
         throw new NoConnectionException();
@@ -137,6 +135,9 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
             $data = $this->client->hGet($key, $field);
+            if ($data === false) {
+                throw new WriteOperationFailedException('Problem with hget key ' . $key);
+            }
             if (false !== $data && null !== $expire && true === $ttlRefresh) {
                 $this->client->expire($key, $expire);
             }

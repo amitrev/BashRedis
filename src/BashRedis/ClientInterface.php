@@ -12,7 +12,7 @@ interface ClientInterface
 
     public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true);
 
-    public function hset($key, string $field, $data, ?int $expire = null): bool;
+    public function hset($key, string $field, $data, ?int $expire = null): void;
 
     public function hgetall($key, ?int $expire = null, bool $ttlRefresh = true): array;
 
