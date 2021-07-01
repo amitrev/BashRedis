@@ -2,8 +2,11 @@
 
 namespace Bash\Bundle\CacheBundle\BashRedis;
 
+use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\InvalidExpireKeyException;
+use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
+
 use Redis;
 
 class Client implements ClientInterface
@@ -36,18 +39,14 @@ class Client implements ClientInterface
 
             $data = $this->client->get($cacheKey);
 
-            if ($data === false) {
-                return false;
-            }
-
-            if ($expire !== null && $ttlRefresh === true) {
+            if ($data !== false && $expire !== null && $ttlRefresh === true) {
                 $this->client->expire($cacheKey, $expire);
             }
 
             return $data;
         }
 
-        return false;
+        throw new NoConnectionException();
     }
 
     public function set($key, $data, ?int $expire = null): bool
@@ -58,7 +57,7 @@ class Client implements ClientInterface
             return $this->client->set($cacheKey, $data, $expire);
         }
 
-        return false;
+        throw new NoConnectionException();
     }
 
     public function del($key): void
@@ -67,15 +66,25 @@ class Client implements ClientInterface
             $cacheKey = $this->generateKey($key);
             $this->client->del($cacheKey);
         }
+
+        throw new NoConnectionException();
     }
 
-    public function getAndSet($key, ?callable $callback = null, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true)
+    public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true)
     {
         if ($this->client->isConnected()) {
             $data = $this->get($key);
 
-            if (false === $data && null !== $callback) {
-                $data = \call_user_func_array($callback, $params);
+            if (false === $data && null !== $dataCarry) {
+                if (is_callable($dataCarry) ) {
+                    if (null !== $params ) {
+                        $data = \call_user_func_array($dataCarry, $params);
+                    } else {
+                       throw new InvalidInputArgumentsException('Params argument cannot be null');
+                    }
+                } else {
+                    $data = $dataCarry;
+                }
                 $status = $this->set($key, $data, $expire);
 
                 if ($status === false) {
@@ -86,7 +95,90 @@ class Client implements ClientInterface
             return $data;
         }
 
-        return null;
+        throw new NoConnectionException();
+    }
+
+    public function hset($key, string $field, $data, ?int $expire = null): bool
+    {
+        if ($this->client->isConnected()) {
+            $key = $this->generateKey($key);
+            $status = $this->client->hSet($key, $field, $data);
+            if ($status === false) {
+                throw new WriteOperationFailedException('Problem with write to key ' . $key);
+            }
+
+            if (null !== $expire) {
+                $this->client->expire($key, $expire);
+            }
+
+            return (bool)$status;
+        }
+
+        throw new NoConnectionException();
+    }
+
+    public function hgetall($key, ?int $expire = null, bool $ttlRefresh = true): array
+    {
+        if ($this->client->isConnected()) {
+            $key = $this->generateKey($key);
+            $data = $this->client->hGetAll($key);
+            if (!empty($data) && null !== $expire && true === $ttlRefresh) {
+                $this->client->expire($key, $expire);
+            }
+
+            return $data;
+        }
+
+        throw new NoConnectionException();
+    }
+
+    public function hget($key, string $field, ?int $expire = null, bool $ttlRefresh = true)
+    {
+        if ($this->client->isConnected()) {
+            $key = $this->generateKey($key);
+            $data = $this->client->hGet($key, $field);
+            if (false !== $data && null !== $expire && true === $ttlRefresh) {
+                $this->client->expire($key, $expire);
+            }
+
+            return $data;
+        }
+
+        throw new NoConnectionException();
+    }
+
+    public function hmset($key, array $keyValues, ?int $expire = null): bool
+    {
+        if ($this->client->isConnected()) {
+            $key = $this->generateKey($key);
+            $status = $this->client->hMSet($key, $keyValues);
+            if (false === $status) {
+                throw new WriteOperationFailedException('Problem with write to key ' . $key);
+            }
+
+            if (null !== $expire) {
+                $this->client->expire($key, $expire);
+            }
+
+            return $status;
+        }
+
+        throw new NoConnectionException();
+    }
+
+    public function hmget($key, array $fields, ?int $expire = null, bool $ttlRefresh = true): array
+    {
+        if ($this->client->isConnected()) {
+            $key = $this->generateKey($key);
+            $data = $this->client->hMGet($key, $fields);
+            if ( !empty($data) && true === $ttlRefresh && null !== $expire ) {
+                $this->client->expire($key, $ttlRefresh);
+            }
+
+            return $data;
+        }
+
+        throw new NoConnectionException();
     }
 
     public function __call(string $command, array $arguments = [])
@@ -95,7 +187,7 @@ class Client implements ClientInterface
             return $this->client->{$command}(...$arguments);
         }
 
-        return null;
+        throw new NoConnectionException();
     }
 
     public function getExpireTime(string $key): int
