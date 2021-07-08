@@ -2,29 +2,33 @@
 
 namespace Bash\Bundle\CacheBundle\DependencyInjection;
 
-use Symfony\Component\Config\FileLocator;
+use Bash\Bundle\CacheBundle\BashRedis\Client;
+use Bash\Bundle\CacheBundle\BashRedis\Factory;
+use Bash\Bundle\CacheBundle\BashRedis\FactoryInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 
-class BashCacheExtension extends Extension
+class BashCacheExtension extends ConfigurableExtension
 {
-    public function load(array $configs, ContainerBuilder $container)
+    protected function loadInternal(array $configs, ContainerBuilder $container): void
     {
-        $configuration = new Configuration();
-        $config = $this->processConfiguration($configuration, $configs);
+        $factoryReference = new Reference(FactoryInterface::class);
+        $container->setDefinition($factoryReference, new Definition(Factory::class));
 
-        $container->setParameter('bash_cache.main', $config['main']);
-        $container->setParameter('bash_cache.counter', $config['counter']);
+        foreach ($configs['clients'] as $name => $arguments) {
+            $definition = new Definition(Client::class);
+            $definition->setFactory([$factoryReference, 'create']);
+            $definition->setArguments([$arguments['$parameters'], $arguments['$options']]);
+            $definition->setPublic(true);
 
-        $container->setParameter('bash_cache.expires.short', $config['expires']['short'] ?? 60);
-        $container->setParameter('bash_cache.expires.medium', $config['expires']['medium'] ?? 3600);
-        $container->setParameter('bash_cache.expires.long', $config['expires']['long'] ?? 86400);
+            $container->setDefinition(sprintf('%s.%s', $this->getAlias(), $name), $definition);
+        }
+    }
 
-        $loader = new YamlFileLoader(
-            $container,
-            new FileLocator(__DIR__ . '/../Resources/config')
-        );
-        $loader->load('services.yaml');
+    public function getAlias(): string
+    {
+        return 'bash_cache';
     }
 }

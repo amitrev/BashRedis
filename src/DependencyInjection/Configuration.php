@@ -9,34 +9,20 @@ class Configuration implements ConfigurationInterface
 {
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $builder = new TreeBuilder('bash_cache');
+        $builder = new TreeBuilder('bash_cache_bundle');
 
         $builder
             ->getRootNode()
                 ->children()
-                    ->arrayNode('main')
-                        ->children()
-                            ->scalarNode('scheme')->end()
-                            ->scalarNode('path')->end()
-                            ->scalarNode('host')->end()
-                            ->scalarNode('port')->end()
-                            ->scalarNode('db')->end()
-                            ->scalarNode('timeout')->end()
-                            ->scalarNode('prefix')->end()
-                            ->scalarNode('persistent')->end()
+                    ->arrayNode('clients')
+                        ->addDefaultChildrenIfNoneSet('default')
+                        ->useAttributeAsKey('default')
+                        ->prototype('array')
+                            ->children()
+                                ->arrayNode('$parameters')->prototype('variable')->end()->end()
+                                ->arrayNode('$options')->prototype('variable')->end()->end()
+                            ->end()
                         ->end()
-                    ->end()
-                    ->arrayNode('counter')
-                        ->children()
-                            ->scalarNode('scheme')->end()
-                            ->scalarNode('path')->end()
-                            ->scalarNode('host')->end()
-                            ->scalarNode('port')->end()
-                            ->scalarNode('db')->end()
-                            ->scalarNode('timeout')->end()
-                            ->scalarNode('prefix')->end()
-                            ->scalarNode('persistent')->end()
-            ->end()
                     ->end()
                     ->arrayNode('expires')
                         ->children()
@@ -45,7 +31,6 @@ class Configuration implements ConfigurationInterface
                             ->scalarNode('long')->end()
                         ->end()
                     ->end()
-                ->end()
             ->end()
         ;
 
