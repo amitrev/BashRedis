@@ -25,7 +25,7 @@ class Client implements ClientInterface
         }
 
         if ($connect) {
-            $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? '' . ':');
+            $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? ''.':');
             $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
             $this->client->select($parameters['database']);
         }
@@ -38,7 +38,7 @@ class Client implements ClientInterface
 
             $data = $this->client->get($cacheKey);
 
-            if ($data !== false && $expire !== null && $ttlRefresh === true) {
+            if (false !== $data && null !== $expire && true === $ttlRefresh) {
                 $this->client->expire($cacheKey, $expire);
             }
 
@@ -72,7 +72,11 @@ class Client implements ClientInterface
     public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true)
     {
         if ($this->client->isConnected()) {
-            $data = $this->get($key);
+            try {
+                $data = $this->get($key, $expire, $ttlRefresh);
+            } catch (NoConnectionException $e) {
+                throw new NoConnectionException();
+            }
 
             if (false === $data && null !== $dataCarry) {
                 if (\is_callable($dataCarry)) {
@@ -86,8 +90,8 @@ class Client implements ClientInterface
                 }
                 $status = $this->set($key, $data, $expire);
 
-                if ($status === false) {
-                    throw new WriteOperationFailedException('Problem with write to key ' . $key);
+                if (false === $status) {
+                    throw new WriteOperationFailedException('Problem with write to key '.$key);
                 }
             }
 
@@ -102,8 +106,8 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
             $status = $this->client->hSet($key, $field, $data);
-            if ($status === false) {
-                throw new WriteOperationFailedException('Problem with write to key ' . $key);
+            if (false === $status) {
+                throw new WriteOperationFailedException('Problem with write to key '.$key);
             }
 
             if (null !== $expire) {
@@ -134,10 +138,11 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
             $data = $this->client->hGet($key, $field);
-            if ($data === false) {
-                throw new WriteOperationFailedException('Problem with hget key ' . $key);
+            if (false === $data) {
+                throw new WriteOperationFailedException('Problem with hget key '.$key);
             }
-            if (false !== $data && null !== $expire && true === $ttlRefresh) {
+
+            if (null !== $expire && true === $ttlRefresh) {
                 $this->client->expire($key, $expire);
             }
 
@@ -153,7 +158,7 @@ class Client implements ClientInterface
             $key = $this->generateKey($key);
             $status = $this->client->hMSet($key, $keyValues);
             if (false === $status) {
-                throw new WriteOperationFailedException('Problem with write to key ' . $key);
+                throw new WriteOperationFailedException('Problem with write to key '.$key);
             }
 
             if (null !== $expire) {
@@ -196,7 +201,7 @@ class Client implements ClientInterface
             return $this->expires[$key];
         }
 
-        throw new InvalidExpireKeyException('Key (' . $key . ') not found');
+        throw new InvalidExpireKeyException('Key ('.$key.') not found');
     }
 
     public function generateKey($value): string
@@ -210,7 +215,7 @@ class Client implements ClientInterface
                 $base = $value['base'];
                 unset($value['base']);
 
-                $cacheKey = $base . '_' . md5(json_encode($value));
+                $cacheKey = $base.'_'.md5(json_encode($value));
             }
         }
 
