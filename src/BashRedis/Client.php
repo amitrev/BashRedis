@@ -186,6 +186,25 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
+    public function delByPattern(string $pattern): bool
+    {
+        try {
+            $keys = $this->keys('*'.$pattern.'*');
+        } catch (NoConnectionException $e) {
+            return false;
+        }
+
+        if (!empty($keys)) {
+            try {
+                $this->del(implode(' ', $keys));
+            } catch (NoConnectionException $e) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function __call(string $command, array $arguments = [])
     {
         if ($this->client->isConnected()) {
