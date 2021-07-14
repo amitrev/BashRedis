@@ -201,7 +201,7 @@ class Client implements ClientInterface
             $success = $this->client->del($keys);
             $this->client->setOption(Redis::OPT_PREFIX, $prefix);
 
-            return (bool)$success;
+            return (bool) $success;
         }
 
         return true;
