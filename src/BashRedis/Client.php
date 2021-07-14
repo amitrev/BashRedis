@@ -189,17 +189,19 @@ class Client implements ClientInterface
     public function delByPattern(string $pattern): bool
     {
         try {
-            $keys = $this->keys('*'.$pattern.'*');
+            $keys = $this->keys($pattern);
         } catch (NoConnectionException $e) {
             return false;
         }
 
         if (!empty($keys)) {
-            try {
-                $this->del(implode(' ', $keys));
-            } catch (NoConnectionException $e) {
-                return false;
-            }
+            $prefix = $this->client->getOption(Redis::OPT_PREFIX) ?? '';
+
+            $this->client->setOption(Redis::OPT_PREFIX, null);
+            $success = $this->client->del($keys);
+            $this->client->setOption(Redis::OPT_PREFIX, $prefix);
+
+            return (bool)$success;
         }
 
         return true;
