@@ -138,11 +138,8 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
             $data = $this->client->hGet($key, $field);
-            if (false === $data) {
-                throw new WriteOperationFailedException('Problem with hget key '.$key);
-            }
 
-            if (null !== $expire && true === $ttlRefresh) {
+            if (false !== $data && null !== $expire && true === $ttlRefresh) {
                 $this->client->expire($key, $expire);
             }
 
