@@ -63,6 +63,7 @@ class Client implements ClientInterface
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
+
             return $this->client->del($cacheKey);
         }
 
@@ -118,7 +119,7 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
-    public function hgetall($key, ?int $expire = null, bool $ttlRefresh = true): array
+    public function hgetall($key, ?int $expire = null, bool $ttlRefresh = false): array
     {
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
