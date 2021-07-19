@@ -41,7 +41,7 @@ class Client implements ClientInterface
     private function removeIGbinary(): void
     {
         if ($this->client->isConnected()) {
-            $this->client->setOption(Redis::OPT_SERIALIZER, null);
+            $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_NONE);
         }
     }
 
