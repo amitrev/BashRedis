@@ -8,7 +8,7 @@ interface ClientInterface
 
     public function set($key, $data, ?int $expire = null);
 
-    public function del($key): void;
+    public function del($key): int;
 
     public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null, bool $ttlRefresh = true);
 

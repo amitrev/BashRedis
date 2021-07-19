@@ -31,7 +31,7 @@ class Client implements ClientInterface
         }
     }
 
-    public function get($key, ?int $expire = null, bool $ttlRefresh = false)
+    public function get($key, ?int $expire = null, bool $ttlRefresh = true)
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
@@ -59,11 +59,11 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
-    public function del($key): void
+    public function del($key): int
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
-            $this->client->del($cacheKey);
+            return $this->client->del($cacheKey);
         }
 
         throw new NoConnectionException();
