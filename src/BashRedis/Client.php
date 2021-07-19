@@ -119,7 +119,7 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
-    public function hgetall($key, ?int $expire = null, bool $ttlRefresh = false): array
+    public function hgetall($key, ?int $expire = null, bool $ttlRefresh = true): array
     {
         if ($this->client->isConnected()) {
             $key = $this->generateKey($key);
