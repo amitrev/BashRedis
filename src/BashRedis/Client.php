@@ -26,8 +26,22 @@ class Client implements ClientInterface
 
         if ($connect) {
             $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? ''.':');
-            $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
+            $this->setIGbinary();
             $this->client->select($parameters['database']);
+        }
+    }
+
+    private function setIGbinary(): void
+    {
+        if ($this->client->isConnected()) {
+            $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
+        }
+    }
+
+    private function removeIGbinary(): void
+    {
+        if ($this->client->isConnected()) {
+            $this->client->setOption(Redis::OPT_SERIALIZER, null);
         }
     }
 
@@ -53,7 +67,19 @@ class Client implements ClientInterface
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
 
-            return $this->client->set($cacheKey, $data, $expire);
+            $isInt = is_int($data);
+
+            if ($isInt) {
+                $this->removeIGbinary();
+            }
+
+            $status = $this->client->set($cacheKey, $data, $expire);
+
+            if ($isInt) {
+                $this->setIGbinary();
+            }
+
+            return $status;
         }
 
         throw new NoConnectionException();
