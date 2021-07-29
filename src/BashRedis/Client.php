@@ -231,6 +231,29 @@ class Client implements ClientInterface
         return true;
     }
 
+    public function findAndHGetAll(string $pattern): array
+    {
+        $result = [];
+
+        try {
+            $keys = $this->keys($pattern);
+        } catch (NoConnectionException $e) {
+            return $result;
+        }
+
+        if (!empty($keys)) {
+            $prefix = $this->client->getOption(Redis::OPT_PREFIX) ?? '';
+            $this->client->setOption(Redis::OPT_PREFIX, null);
+            foreach ($keys as $key) {
+                $index = str_replace($prefix, '', $key);
+                $result[$index] = $this->client->hGetAll($key);
+            }
+            $this->client->setOption(Redis::OPT_PREFIX, $prefix);
+        }
+
+        return $result;
+    }
+
     public function __call(string $command, array $arguments = [])
     {
         if ($this->client->isConnected()) {
