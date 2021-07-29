@@ -94,7 +94,7 @@ class Client implements ClientInterface
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
-            $cacheKey = $this->_removePrefix($cacheKey);
+            $cacheKey = $this->removePrefix($cacheKey);
 
             return $this->client->del($cacheKey);
         }
@@ -248,7 +248,7 @@ class Client implements ClientInterface
 
         if (!empty($keys)) {
             foreach ($keys as $key) {
-                $key = $this->_removePrefix($key);
+                $key = $this->removePrefix($key);
                 $result[$key] = $this->client->hGetAll($key);
             }
         }
@@ -264,7 +264,7 @@ class Client implements ClientInterface
         }
 
         if (isset($keys[0])) {
-            $key = $this->_removePrefix($keys[0]);
+            $key = $this->removePrefix($keys[0]);
             $result = $this->client->get($key);
         }
 
@@ -307,7 +307,7 @@ class Client implements ClientInterface
         return $cacheKey;
     }
 
-    public function _removePrefix(string $key): string
+    private function removePrefix(string $key): string
     {
         return preg_replace('/^'.$this->prefix.'/', '', $key);
     }
