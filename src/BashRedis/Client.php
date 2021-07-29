@@ -94,6 +94,7 @@ class Client implements ClientInterface
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
+            $cacheKey = $this->_removePrefix($cacheKey);
 
             return $this->client->del($cacheKey);
         }
