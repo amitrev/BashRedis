@@ -6,15 +6,20 @@ use Bash\Bundle\CacheBundle\Exception\InvalidExpireKeyException;
 use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
+use function call_user_func_array;
+use function is_array;
+use function is_callable;
 use Redis;
 
 class Client implements ClientInterface
 {
     private Redis $client;
     private array $expires;
+    private string $prefix;
 
     public function __construct(?array $parameters = null, ?array $options = null)
     {
+        $this->prefix = $options['prefix'] ?? '';
         $this->expires = $options['expires'] ?? [];
         $this->client = new Redis();
 
@@ -25,7 +30,7 @@ class Client implements ClientInterface
         }
 
         if ($connect) {
-            $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? ''.':');
+            $this->setPrefix($this->prefix);
             $this->setIGbinary();
             $this->client->select($parameters['database']);
         }
@@ -102,13 +107,13 @@ class Client implements ClientInterface
             try {
                 $data = $this->get($key, $expire, $ttlRefresh);
             } catch (NoConnectionException $e) {
-                throw new NoConnectionException();
+                throw new NoConnectionException('No redis', 0, $e);
             }
 
             if (false === $data && null !== $dataCarry) {
-                if (\is_callable($dataCarry)) {
+                if (is_callable($dataCarry)) {
                     if (null !== $params) {
-                        $data = \call_user_func_array($dataCarry, $params);
+                        $data = call_user_func_array($dataCarry, $params);
                     } else {
                         throw new InvalidInputArgumentsException('Params argument cannot be null');
                     }
@@ -189,7 +194,7 @@ class Client implements ClientInterface
                 $this->client->expire($key, $expire);
             }
 
-            return $status;
+            return true;
         }
 
         throw new NoConnectionException();
@@ -212,23 +217,22 @@ class Client implements ClientInterface
 
     public function delByPattern(string $pattern): bool
     {
+        $status = false;
+
         try {
             $keys = $this->keys($pattern);
         } catch (NoConnectionException $e) {
-            return false;
         }
 
         if (!empty($keys)) {
-            $prefix = $this->client->getOption(Redis::OPT_PREFIX) ?? '';
-
-            $this->client->setOption(Redis::OPT_PREFIX, null);
+            $this->setPrefix(null);
             $success = $this->client->del($keys);
-            $this->client->setOption(Redis::OPT_PREFIX, $prefix);
+            $this->setPrefix($this->prefix);
 
-            return (bool) $success;
+            $status = (bool) $success;
         }
 
-        return true;
+        return $status;
     }
 
     public function findAndHGetAll(string $pattern): array
@@ -242,16 +246,28 @@ class Client implements ClientInterface
         }
 
         if (!empty($keys)) {
-            $prefix = $this->client->getOption(Redis::OPT_PREFIX) ?? '';
-            $this->client->setOption(Redis::OPT_PREFIX, null);
             foreach ($keys as $key) {
-                $index = str_replace($prefix, '', $key);
-                $result[$index] = $this->client->hGetAll($key);
+                $key = $this->_removePrefix($key);
+                $result[$key] = $this->client->hGetAll($key);
             }
-            $this->client->setOption(Redis::OPT_PREFIX, $prefix);
         }
 
         return $result;
+    }
+
+    public function findAndGet(string $pattern)
+    {
+        try {
+            $keys = $this->keys($pattern);
+        } catch (NoConnectionException $e) {
+        }
+
+        if (isset($keys[0])) {
+            $key = $this->_removePrefix($keys[0]);
+            $result = $this->client->get($key);
+        }
+
+        return $result ?? null;
     }
 
     public function __call(string $command, array $arguments = [])
@@ -276,7 +292,7 @@ class Client implements ClientInterface
     {
         $cacheKey = $value;
 
-        if (\is_array($value)) {
+        if (is_array($value)) {
             $cacheKey = md5(json_encode($value));
 
             if (isset($value['base'])) {
@@ -288,5 +304,15 @@ class Client implements ClientInterface
         }
 
         return $cacheKey;
+    }
+
+    public function _removePrefix(string $key): string
+    {
+        return preg_replace('/^'.$this->prefix.'/', '', $key);
+    }
+
+    private function setPrefix(?string $prefix): void
+    {
+        $this->client->setOption(Redis::OPT_PREFIX, $prefix);
     }
 }
