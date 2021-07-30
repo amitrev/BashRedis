@@ -39,7 +39,7 @@ class Client implements ClientInterface
     private function setSerialize(): void
     {
         if ($this->client->isConnected()) {
-            $method = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_JSON;
+            $method = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
             $this->client->setOption(Redis::OPT_SERIALIZER, $method);
         }
     }
