@@ -26,19 +26,20 @@ class Client implements ClientInterface
 
         if ($connect) {
             $this->client->setOption(Redis::OPT_PREFIX, $options['prefix'] ?? ''.':');
-            $this->setIGbinary();
+            $this->setSerialize();
             $this->client->select($parameters['database']);
         }
     }
 
-    private function setIGbinary(): void
+    private function setSerialize(): void
     {
         if ($this->client->isConnected()) {
-            $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
+            $method = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_JSON;
+            $this->client->setOption(Redis::OPT_SERIALIZER, $method);
         }
     }
 
-    private function removeIGbinary(): void
+    private function removeSerialize(): void
     {
         if ($this->client->isConnected()) {
             $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_NONE);
@@ -70,13 +71,13 @@ class Client implements ClientInterface
             $isInt = is_int($data);
 
             if ($isInt) {
-                $this->removeIGbinary();
+                $this->removeSerialize();
             }
 
             $status = $this->client->set($cacheKey, $data, $expire);
 
             if ($isInt) {
-                $this->setIGbinary();
+                $this->setSerialize();
             }
 
             return $status;
