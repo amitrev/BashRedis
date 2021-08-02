@@ -16,11 +16,14 @@ class Client implements ClientInterface
     private Redis $client;
     private array $expires;
     private string $prefix;
+    private int $serialize;
 
     public function __construct(?array $parameters = null, ?array $options = null)
     {
         $this->prefix = $options['prefix'] ?? '';
         $this->expires = $options['expires'] ?? [];
+        $this->serialize = defined(Redis::SERIALIZER_IGBINARY) ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
+
         $this->client = new Redis();
 
         if (isset($options['persistent'])) {
@@ -39,8 +42,7 @@ class Client implements ClientInterface
     private function setSerialize(): void
     {
         if ($this->client->isConnected()) {
-            $method = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
-            $this->client->setOption(Redis::OPT_SERIALIZER, $method);
+            $this->client->setOption(Redis::OPT_SERIALIZER, $this->serialize);
         }
     }
 
@@ -95,7 +97,6 @@ class Client implements ClientInterface
     {
         if ($this->client->isConnected()) {
             $cacheKey = $this->generateKey($key);
-            $cacheKey = $this->removePrefix($cacheKey);
 
             return $this->client->del($cacheKey);
         }
@@ -275,6 +276,7 @@ class Client implements ClientInterface
     public function __call(string $command, array $arguments = [])
     {
         if ($this->client->isConnected()) {
+            $arguments[0] = $this->removePrefix($arguments[0]);
             return $this->client->{$command}(...$arguments);
         }
 
@@ -305,7 +307,7 @@ class Client implements ClientInterface
             }
         }
 
-        return $cacheKey;
+        return $this->removePrefix($cacheKey);
     }
 
     private function removePrefix(string $key): string
