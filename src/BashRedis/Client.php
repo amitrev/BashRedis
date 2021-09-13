@@ -22,7 +22,7 @@ class Client implements ClientInterface
     {
         $this->prefix = $options['prefix'] ?? '';
         $this->expires = $options['expires'] ?? [];
-        $this->serialize = defined(Redis::SERIALIZER_IGBINARY) ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
+        $this->serialize = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
 
         $this->client = new Redis();
 
