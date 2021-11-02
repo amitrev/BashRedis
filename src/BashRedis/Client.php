@@ -238,6 +238,32 @@ class Client implements ClientInterface
         return $status;
     }
 
+    public function mget(array $keys)
+    {
+        $items = [];
+
+        if (!empty($keys)) {
+            $this->setPrefix(null);
+            $items = $this->client->mget($keys);
+            $this->setPrefix($this->prefix);
+        }
+
+        return $items;
+    }
+
+    public function mset(array $data)
+    {
+        $isSuccess = false;
+
+        if (!empty($data)) {
+            $this->setPrefix(null);
+            $isSuccess = $this->client->mset($data);
+            $this->setPrefix($this->prefix);
+        }
+
+        return $isSuccess;
+    }
+
     public function findAndHGetAll(string $pattern): array
     {
         $result = [];
@@ -277,6 +303,7 @@ class Client implements ClientInterface
     {
         if ($this->client->isConnected()) {
             $arguments[0] = $this->removePrefix($arguments[0]);
+
             return $this->client->{$command}(...$arguments);
         }
 
@@ -318,5 +345,10 @@ class Client implements ClientInterface
     private function setPrefix(?string $prefix): void
     {
         $this->client->setOption(Redis::OPT_PREFIX, $prefix);
+    }
+
+    public function getPrefix(): ?string
+    {
+        return $this->prefix;
     }
 }
