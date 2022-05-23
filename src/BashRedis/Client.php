@@ -228,14 +228,23 @@ class Client implements ClientInterface
         }
 
         if (!empty($keys)) {
+            $status = $this->delKeys($keys);
+        }
+
+        return $status;
+    }
+
+    public function delKeys(array $keys): bool
+    {
+        if ($this->client->isConnected()) {
             $this->setPrefix(null);
             $success = $this->client->del($keys);
             $this->setPrefix($this->prefix);
 
-            $status = (bool) $success;
+            return (bool) $success;
         }
 
-        return $status;
+        throw new NoConnectionException();
     }
 
     public function mget(array $keys)
