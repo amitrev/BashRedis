@@ -20,11 +20,6 @@
             "Bash\\Bundle\\CacheBundle\\": "src/"
         }
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Bash\\Bundle\\CacheBundle\\Test\\": "src/Tests/"
-        }
-    },
     "require": {
         "php": "^7.4",
         "ext-json": "*",
@@ -32,16 +27,15 @@
         "symfony/framework-bundle": "^5.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "*",
+        "roave/security-advisories": "dev-latest",
         "friendsofphp/php-cs-fixer": "^v3.0"
     },
     "scripts": {
         "cs-fix-dry": "vendor/bin/php-cs-fixer fix --dry-run",
-        "cs-fix": "vendor/bin/php-cs-fixer fix",
-        "test": "phpunit --colors=always",
-        "testcover": "phpunit --coverage-text --colors=never"
+        "cs-fix": "vendor/bin/php-cs-fixer fix"
     },
     "scripts-descriptions": {
-        "cs-fix": "Run php-cs-fixer in dry run mode (linting)"
+        "cs-fix-dry": "Run php-cs-fixer in dry run mode (linting)",
+        "cs-fix": "Run php-cs-fixer to fix"
     }
 }
