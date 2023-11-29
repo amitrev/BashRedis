@@ -68,3 +68,26 @@ class IndexController extends AbstractController
     }
 }
 ```
+
+### Step 3: Usage
+```
+class IndexController extends AbstractController
+{
+    /**
+     * @Route("/",priority=100, methods="GET", name="homepage")
+     */
+    public function __invoke(Client $mainRedis): Response
+    {
+       $number = $mainRedis->get('number');
+
+       if ($number === false) {
+            $number = rand(0, 100);
+            $mainRedis->set('number', $number, 60);
+       }
+
+        return new Response(
+            '<html><body>'.$number.'</body></html>'
+        );
+    }
+}
+```
