@@ -168,6 +168,8 @@ class Client implements ClientInterface
             if (null !== $expire) {
                 $this->client->expire($key, $expire);
             }
+
+            return;
         }
 
         throw new NoConnectionException();
