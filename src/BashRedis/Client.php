@@ -301,6 +301,10 @@ class Client implements ClientInterface
         return $isSuccess;
     }
 
+    /**
+     * Finds keys by pattern and returns their hGetAll results.
+     * Optimization: use pipeline to reduce network roundtrips.
+     */
     public function findAndHGetAll(string $pattern): array
     {
         $result = [];
@@ -312,9 +316,16 @@ class Client implements ClientInterface
         }
 
         if (!empty($keys)) {
+            $pipe = $this->client->multi(Redis::PIPELINE);
             foreach ($keys as $key) {
                 $key = $this->removePrefix($key);
-                $result[$key] = $this->client->hGetAll($key);
+                $pipe->hGetAll($key);
+            }
+            $replies = $pipe->exec();
+
+            foreach ($keys as $index => $key) {
+                $key = $this->removePrefix($key);
+                $result[$key] = $replies[$index];
             }
         }
 
@@ -339,6 +350,10 @@ class Client implements ClientInterface
     /**
      * @throws NoConnectionException
      */
+    /**
+     * Finds all keys matching a pattern using SCAN.
+     * Optimization: more efficient array merging.
+     */
     public function findAllKeys(string $pattern): array
     {
         if (false === $this->client->isConnected()) {
@@ -348,10 +363,12 @@ class Client implements ClientInterface
         $foundKeys = [];
         $iterator = null;
         while (false !== ($keys = $this->client->scan($iterator, $pattern))) {
-            $foundKeys[] = $keys;
+            foreach ($keys as $key) {
+                $foundKeys[] = $key;
+            }
         }
 
-        return array_merge([], ...$foundKeys);
+        return $foundKeys;
     }
 
     /**
@@ -404,9 +421,17 @@ class Client implements ClientInterface
         return $this->removePrefix($cacheKey);
     }
 
+    /**
+     * Removes the prefix from the key.
+     * Optimization: replaced preg_replace with strpos/substr for better performance.
+     */
     private function removePrefix(string $key): string
     {
-        return preg_replace('/^'.$this->prefix.'/', '', $key);
+        if ('' === $this->prefix || 0 !== strpos($key, $this->prefix)) {
+            return $key;
+        }
+
+        return substr($key, \strlen($this->prefix));
     }
 
     private function setPrefix(?string $prefix): void
