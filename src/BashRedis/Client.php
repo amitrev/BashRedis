@@ -307,19 +307,22 @@ class Client implements ClientInterface
 
     /**
      * Finds keys by pattern and returns their hGetAll results.
-     * Optimization: use pipeline to reduce network roundtrips.
+     * Optimization: use chunked pipeline to reduce network roundtrips and memory pressure.
      */
     public function findAndHGetAll(string $pattern): array
     {
-        $result = [];
-
-        try {
-            $keys = $this->findAllKeys($pattern);
-        } catch (NoConnectionException $e) {
-            return $result;
+        if (false === $this->client->isConnected()) {
+            return [];
         }
 
-        if (!empty($keys)) {
+        $result = [];
+        $iterator = null;
+
+        while (false !== ($keys = $this->client->scan($iterator, $pattern, 1000))) {
+            if (empty($keys)) {
+                continue;
+            }
+
             $pipe = $this->client->multi(Redis::PIPELINE);
             $normalizedKeys = [];
             foreach ($keys as $key) {
@@ -376,8 +379,8 @@ class Client implements ClientInterface
         $foundKeys = [];
         $iterator = null;
         while (false !== ($keys = $this->client->scan($iterator, $pattern, 1000))) {
-            foreach ($keys as $key) {
-                $foundKeys[] = $key;
+            if (!empty($keys)) {
+                array_push($foundKeys, ...$keys);
             }
         }
 

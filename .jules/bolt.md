@@ -5,3 +5,7 @@
 ## 2025-05-14 - Redis SCAN behavior
 **Learning:** Redis `SCAN` is iterative and the `COUNT` argument is only a hint. A single `SCAN` call might return zero keys even if matches exist, as long as the iterator is not 0.
 **Action:** Always wrap `SCAN` in a loop checking the iterator until it's finished or the desired result is found.
+
+## 2025-05-14 - Pipeline and Memory
+**Learning:** While pipelines reduce latency, a pipeline that is too large can consume significant memory on both the PHP client and the Redis server.
+**Action:** Process large datasets in chunked pipelines (e.g., 1000 items per pipeline) to balance latency gains with memory efficiency.
