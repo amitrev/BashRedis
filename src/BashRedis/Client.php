@@ -238,25 +238,29 @@ class Client implements ClientInterface
         throw new NoConnectionException();
     }
 
+    /**
+     * Deletes keys matching a pattern.
+     * Optimization: scan and delete in chunks to avoid fetching all keys into memory.
+     */
     public function delByPattern(string $pattern): bool
     {
-        $status = false;
-
         try {
-            $keys = $this->findAllKeys($pattern);
-        } catch (NoConnectionException $e) {
-            $keys = [];
-        }
-
-        if (!empty($keys)) {
-            try {
-                $status = $this->delKeys($keys);
-            } catch (NoConnectionException $e) {
+            if (false === $this->client->isConnected()) {
                 return false;
             }
-        }
 
-        return $status;
+            $iterator = null;
+            $totalDeleted = 0;
+            while (false !== ($keys = $this->client->scan($iterator, $pattern, 1000))) {
+                if (!empty($keys)) {
+                    $totalDeleted += $this->delKeys($keys);
+                }
+            }
+
+            return $totalDeleted > 0;
+        } catch (NoConnectionException $e) {
+            return false;
+        }
     }
 
     /**
@@ -317,42 +321,51 @@ class Client implements ClientInterface
 
         if (!empty($keys)) {
             $pipe = $this->client->multi(Redis::PIPELINE);
+            $normalizedKeys = [];
             foreach ($keys as $key) {
                 $key = $this->removePrefix($key);
+                $normalizedKeys[] = $key;
                 $pipe->hGetAll($key);
             }
             $replies = $pipe->exec();
 
-            foreach ($keys as $index => $key) {
-                $key = $this->removePrefix($key);
-                $result[$key] = $replies[$index];
+            if (is_array($replies)) {
+                foreach ($normalizedKeys as $index => $key) {
+                    $result[$key] = $replies[$index];
+                }
             }
         }
 
         return $result;
     }
 
+    /**
+     * Finds the first key matching a pattern and returns its value.
+     * Optimization: Stops scanning as soon as the first key is found.
+     */
     public function findAndGet(string $pattern)
     {
-        try {
-            $keys = $this->findAllKeys($pattern);
-        } catch (NoConnectionException $e) {
+        if (false === $this->client->isConnected()) {
+            return null;
         }
 
-        if (isset($keys[0])) {
-            $key = $this->removePrefix($keys[0]);
-            $result = $this->client->get($key);
+        $iterator = null;
+        while (false !== ($keys = $this->client->scan($iterator, $pattern, 100))) {
+            if (!empty($keys)) {
+                $key = $this->removePrefix($keys[0]);
+
+                return $this->client->get($key);
+            }
         }
 
-        return $result ?? null;
+        return null;
     }
 
     /**
-     * @throws NoConnectionException
-     */
-    /**
      * Finds all keys matching a pattern using SCAN.
      * Optimization: more efficient array merging.
+     *
+     * @throws NoConnectionException
      */
     public function findAllKeys(string $pattern): array
     {
@@ -362,7 +375,7 @@ class Client implements ClientInterface
 
         $foundKeys = [];
         $iterator = null;
-        while (false !== ($keys = $this->client->scan($iterator, $pattern))) {
+        while (false !== ($keys = $this->client->scan($iterator, $pattern, 1000))) {
             foreach ($keys as $key) {
                 $foundKeys[] = $key;
             }
@@ -436,6 +449,7 @@ class Client implements ClientInterface
 
     private function setPrefix(?string $prefix): void
     {
+        $this->prefix = $prefix ?? '';
         $this->client->setOption(Redis::OPT_PREFIX, $prefix);
     }
 
