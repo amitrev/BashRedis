@@ -9,3 +9,11 @@
 ## 2025-05-14 - Pipeline and Memory
 **Learning:** While pipelines reduce latency, a pipeline that is too large can consume significant memory on both the PHP client and the Redis server.
 **Action:** Process large datasets in chunked pipelines (e.g., 1000 items per pipeline) to balance latency gains with memory efficiency.
+
+## 2025-05-14 - Lazy Connection and State Tracking
+**Learning:** Lazy connection improves performance when services are injected but not used. Tracking internal states (like current serializer) avoids redundant `setOption` calls to the Redis extension.
+**Action:** Defer `connect()` until the first command. Use class properties to mirror the Redis client state.
+
+## 2025-05-14 - Correct phpredis SCAN termination
+**Learning:** In `phpredis`, `scan()` does not return `false` to indicate completion. Instead, the iterator reference passed to the call is updated, and the loop should terminate when the iterator returns to `0`.
+**Action:** Use `while(true)` or similar, calling `scan($iterator, ...)` and breaking when `(int)$iterator === 0`.
