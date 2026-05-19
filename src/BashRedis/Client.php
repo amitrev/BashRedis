@@ -113,6 +113,36 @@ class Client implements ClientInterface
     /**
      * @throws NoConnectionException
      */
+    public function incrBy($key, int $value): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return $this->client->incrBy($key, $value);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function decrBy($key, int $value): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return $this->client->decrBy($key, $value);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
     public function exists($key): int
     {
         $this->connect();

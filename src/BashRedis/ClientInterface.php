@@ -26,11 +26,29 @@ interface ClientInterface
 
     public function decr($key): int;
 
+    public function incrBy($key, int $value): int;
+
+    public function decrBy($key, int $value): int;
+
     public function expire($key, int $expire): bool;
 
     public function exists($key): int;
 
     public function ttl($key): int;
+
+    public function delByPattern(string $pattern): bool;
+
+    public function delKeys(array $keys): bool;
+
+    public function mget(array $keys);
+
+    public function mset(array $data);
+
+    public function findAndHGetAll(string $pattern): array;
+
+    public function findAndGet(string $pattern);
+
+    public function findAllKeys(string $pattern): array;
 
     public function __call(string $command, array $arguments = []);
 
