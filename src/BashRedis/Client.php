@@ -19,6 +19,7 @@ use function json_encode;
 use function md5;
 use function sprintf;
 use function strlen;
+use function strncmp;
 use function strpos;
 use function substr;
 
@@ -93,6 +94,36 @@ class Client implements ClientInterface
             $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_NONE);
             $this->currentSerializer = Redis::SERIALIZER_NONE;
         }
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function hincrby($key, string $field, int $value): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->hIncrBy($key, $field, $value);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function hdel($key, string $field): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->hDel($key, $field);
+        }
+
+        throw new NoConnectionException();
     }
 
     /**
@@ -679,11 +710,11 @@ class Client implements ClientInterface
 
     /**
      * Removes the prefix from the key.
-     * Optimization: replaced preg_replace with strpos/substr for better performance.
+     * Optimization: replaced preg_replace with strncmp/substr for better performance.
      */
     private function removePrefix(string $key): string
     {
-        if (0 === $this->prefixLength || 0 !== strpos($key, $this->prefix)) {
+        if (0 === $this->prefixLength || 0 !== strncmp($key, $this->prefix, $this->prefixLength)) {
             return $key;
         }
 

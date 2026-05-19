@@ -16,6 +16,10 @@ interface ClientInterface
 
     public function hgetall($key, ?int $expire = null): array;
 
+    public function hdel($key, string $field): int;
+
+    public function hincrby($key, string $field, int $value): int;
+
     public function hget($key, string $field, ?int $expire = null);
 
     public function hmset($key, array $keyValues, ?int $expire = null): bool;
