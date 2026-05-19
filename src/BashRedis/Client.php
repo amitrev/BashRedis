@@ -19,6 +19,7 @@ class Client implements ClientInterface
     private Redis $client;
     private array $expires;
     private string $prefix;
+    private int $prefixLength;
     private int $serialize;
     private ?array $parameters;
     private ?array $options;
@@ -30,6 +31,7 @@ class Client implements ClientInterface
         $this->parameters = $parameters;
         $this->options = $options;
         $this->prefix = $options['prefix'] ?? '';
+        $this->prefixLength = \strlen($this->prefix);
         $this->expires = $options['expires'] ?? [];
         $this->serialize = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
 
@@ -68,7 +70,7 @@ class Client implements ClientInterface
 
     private function setSerialize(): void
     {
-        if ($this->currentSerializer !== $this->serialize && $this->client->isConnected()) {
+        if ($this->currentSerializer !== $this->serialize) {
             $this->client->setOption(Redis::OPT_SERIALIZER, $this->serialize);
             $this->currentSerializer = $this->serialize;
         }
@@ -76,7 +78,7 @@ class Client implements ClientInterface
 
     private function removeSerialize(): void
     {
-        if ($this->currentSerializer !== Redis::SERIALIZER_NONE && $this->client->isConnected()) {
+        if ($this->currentSerializer !== Redis::SERIALIZER_NONE) {
             $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_NONE);
             $this->currentSerializer = Redis::SERIALIZER_NONE;
         }
@@ -88,7 +90,7 @@ class Client implements ClientInterface
     public function get($key, ?int $expire = null)
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
 
             return $this->client->get($cacheKey);
@@ -103,7 +105,7 @@ class Client implements ClientInterface
     public function set($key, $data, ?int $expire = null): bool
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
 
             $isInt = is_int($data);
@@ -130,7 +132,7 @@ class Client implements ClientInterface
     public function del($key): int
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
 
             return $this->client->del($cacheKey);
@@ -147,7 +149,7 @@ class Client implements ClientInterface
     public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null)
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             try {
                 $data = $this->get($key, $expire);
             } catch (NoConnectionException $e) {
@@ -184,7 +186,7 @@ class Client implements ClientInterface
     public function hset($key, string $field, $data, ?int $expire = null): void
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $key = $this->generateKey($key);
             $status = $this->client->hSet($key, $field, $data);
             if (false === $status) {
@@ -205,7 +207,7 @@ class Client implements ClientInterface
     public function hgetall($key, ?int $expire = null): array
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $key = $this->generateKey($key);
 
             return $this->client->hGetAll($key);
@@ -220,7 +222,7 @@ class Client implements ClientInterface
     public function hget($key, string $field, ?int $expire = null)
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $key = $this->generateKey($key);
 
             return $this->client->hGet($key, $field);
@@ -236,7 +238,7 @@ class Client implements ClientInterface
     public function hmset($key, array $keyValues, ?int $expire = null): bool
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $key = $this->generateKey($key);
             $status = $this->client->hMSet($key, $keyValues);
             if (false === $status) {
@@ -259,7 +261,7 @@ class Client implements ClientInterface
     public function hmget($key, array $fields, ?int $expire = null): array
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $key = $this->generateKey($key);
 
             return $this->client->hMGet($key, $fields);
@@ -276,7 +278,7 @@ class Client implements ClientInterface
     {
         try {
             $this->connect();
-            if (false === $this->client->isConnected()) {
+            if (false === $this->isConnected) {
                 return false;
             }
 
@@ -306,7 +308,7 @@ class Client implements ClientInterface
     public function delKeys(array $keys): bool
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $this->client->setOption(Redis::OPT_PREFIX, null);
             $success = $this->client->del($keys);
             $this->client->setOption(Redis::OPT_PREFIX, $this->prefix);
@@ -352,7 +354,7 @@ class Client implements ClientInterface
     public function findAndHGetAll(string $pattern): array
     {
         $this->connect();
-        if (false === $this->client->isConnected()) {
+        if (false === $this->isConnected) {
             return [];
         }
 
@@ -398,7 +400,7 @@ class Client implements ClientInterface
     public function findAndGet(string $pattern)
     {
         $this->connect();
-        if (false === $this->client->isConnected()) {
+        if (false === $this->isConnected) {
             return null;
         }
 
@@ -428,7 +430,7 @@ class Client implements ClientInterface
     public function findAllKeys(string $pattern): array
     {
         $this->connect();
-        if (false === $this->client->isConnected()) {
+        if (false === $this->isConnected) {
             throw new NoConnectionException();
         }
 
@@ -454,7 +456,7 @@ class Client implements ClientInterface
     public function __call(string $command, array $arguments = [])
     {
         $this->connect();
-        if ($this->client->isConnected()) {
+        if ($this->isConnected) {
             $arguments[0] = $this->removePrefix($arguments[0]);
 
             return $this->client->{$command}(...$arguments);
@@ -505,16 +507,17 @@ class Client implements ClientInterface
      */
     private function removePrefix(string $key): string
     {
-        if ('' === $this->prefix || 0 !== strpos($key, $this->prefix)) {
+        if (0 === $this->prefixLength || 0 !== strpos($key, $this->prefix)) {
             return $key;
         }
 
-        return substr($key, \strlen($this->prefix));
+        return substr($key, $this->prefixLength);
     }
 
     private function setPrefix(?string $prefix): void
     {
         $this->prefix = $prefix ?? '';
+        $this->prefixLength = \strlen($this->prefix);
         $this->client->setOption(Redis::OPT_PREFIX, $prefix);
     }
 

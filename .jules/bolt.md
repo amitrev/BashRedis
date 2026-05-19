@@ -17,3 +17,7 @@
 ## 2025-05-14 - Correct phpredis SCAN termination
 **Learning:** In `phpredis`, `scan()` does not return `false` to indicate completion. Instead, the iterator reference passed to the call is updated, and the loop should terminate when the iterator returns to `0`.
 **Action:** Use `while(true)` or similar, calling `scan($iterator, ...)` and breaking when `(int)$iterator === 0`.
+
+## 2025-05-14 - Internal State Caching
+**Learning:** Calling extension methods like `isConnected()` or PHP functions like `strlen()` repeatedly in tight loops can add up.
+**Action:** Use internal class properties to cache these values once they are known or changed.
