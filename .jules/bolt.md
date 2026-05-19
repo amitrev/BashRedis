@@ -27,5 +27,5 @@
 **Action:** Implement frequently used Redis methods explicitly. Import all used functions at the top of the file.
 
 ## 2025-05-14 - Pipelined Read-and-Expire
-**Learning:** Refreshing TTL on read (e.g., `hGet` + `expire`) is a common pattern that can be optimized with pipelines to reduce roundtrips.
+**Learning:** Refreshing TTL on read (e.g., `get` + `expire` or `hGet` + `expire`) is a common pattern that can be optimized with pipelines to reduce roundtrips.
 **Action:** Add `$expire` parameter to read methods and use pipelines when it's provided.

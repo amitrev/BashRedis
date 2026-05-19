@@ -28,6 +28,10 @@ interface ClientInterface
 
     public function expire($key, int $expire): bool;
 
+    public function exists($key): int;
+
+    public function ttl($key): int;
+
     public function __call(string $command, array $arguments = []);
 
     public function getExpireTime(string $key);

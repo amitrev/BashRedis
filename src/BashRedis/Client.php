@@ -113,6 +113,36 @@ class Client implements ClientInterface
     /**
      * @throws NoConnectionException
      */
+    public function exists($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->exists($key);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function ttl($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->ttl($key);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
     public function decr($key): int
     {
         $this->connect();
@@ -148,6 +178,15 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
+
+            if (null !== $expire) {
+                $pipe = $this->client->multi(Redis::PIPELINE);
+                $pipe->get($cacheKey);
+                $pipe->expire($cacheKey, $expire);
+                $replies = $pipe->exec();
+
+                return $replies[0] ?? false;
+            }
 
             return $this->client->get($cacheKey);
         }
