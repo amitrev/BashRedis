@@ -114,6 +114,10 @@ class Client implements ClientInterface
                 $this->removeSerialize();
             }
 
+            if (null === $expire && \is_string($key) && isset($this->expires[$key])) {
+                $expire = $this->expires[$key];
+            }
+
             $status = $this->client->set($cacheKey, $data, $expire);
 
             if ($isInt) {
@@ -149,34 +153,45 @@ class Client implements ClientInterface
     public function getAndSet($key, $dataCarry, ?array $params = null, ?int $expire = null)
     {
         $this->connect();
-        if ($this->isConnected) {
-            try {
-                $data = $this->get($key, $expire);
-            } catch (NoConnectionException $e) {
-                throw new NoConnectionException('No redis', 0, $e);
-            }
-
-            if (false === $data && null !== $dataCarry) {
-                if (is_callable($dataCarry)) {
-                    if (null !== $params) {
-                        $data = call_user_func_array($dataCarry, $params);
-                    } else {
-                        throw new InvalidInputArgumentsException('Params argument cannot be null');
-                    }
-                } else {
-                    $data = $dataCarry;
-                }
-                $status = $this->set($key, $data, $expire);
-
-                if (false === $status) {
-                    throw new WriteOperationFailedException('Problem with write to key '.$key);
-                }
-            }
-
-            return $data;
+        if (!$this->isConnected) {
+            throw new NoConnectionException();
         }
 
-        throw new NoConnectionException();
+        $cacheKey = $this->generateKey($key);
+        $data = $this->client->get($cacheKey);
+
+        if (false === $data && null !== $dataCarry) {
+            if (is_callable($dataCarry)) {
+                if (null !== $params) {
+                    $data = call_user_func_array($dataCarry, $params);
+                } else {
+                    throw new InvalidInputArgumentsException('Params argument cannot be null');
+                }
+            } else {
+                $data = $dataCarry;
+            }
+
+            $isInt = is_int($data);
+            if ($isInt) {
+                $this->removeSerialize();
+            }
+
+            if (null === $expire && \is_string($key) && isset($this->expires[$key])) {
+                $expire = $this->expires[$key];
+            }
+
+            $status = $this->client->set($cacheKey, $data, $expire);
+
+            if ($isInt) {
+                $this->setSerialize();
+            }
+
+            if (false === $status) {
+                throw new WriteOperationFailedException('Problem with write to key '.$cacheKey);
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -186,19 +201,25 @@ class Client implements ClientInterface
     public function hset($key, string $field, $data, ?int $expire = null): void
     {
         $this->connect();
-        if ($this->isConnected) {
-            $key = $this->generateKey($key);
-            $status = $this->client->hSet($key, $field, $data);
-            if (false === $status) {
-                throw new WriteOperationFailedException('Problem with write to key '.$key);
-            }
-
-            if (null !== $expire) {
-                $this->client->expire($key, $expire);
-            }
+        if (!$this->isConnected) {
+            throw new NoConnectionException();
         }
 
-        throw new NoConnectionException();
+        $key = $this->generateKey($key);
+
+        if (null !== $expire) {
+            $pipe = $this->client->multi(Redis::PIPELINE);
+            $pipe->hSet($key, $field, $data);
+            $pipe->expire($key, $expire);
+            $replies = $pipe->exec();
+            $status = $replies[0] ?? false;
+        } else {
+            $status = $this->client->hSet($key, $field, $data);
+        }
+
+        if (false === $status) {
+            throw new WriteOperationFailedException('Problem with write to key ' . $key);
+        }
     }
 
     /**
@@ -238,21 +259,27 @@ class Client implements ClientInterface
     public function hmset($key, array $keyValues, ?int $expire = null): bool
     {
         $this->connect();
-        if ($this->isConnected) {
-            $key = $this->generateKey($key);
-            $status = $this->client->hMSet($key, $keyValues);
-            if (false === $status) {
-                throw new WriteOperationFailedException('Problem with write to key '.$key);
-            }
-
-            if (null !== $expire) {
-                $this->client->expire($key, $expire);
-            }
-
-            return true;
+        if (!$this->isConnected) {
+            throw new NoConnectionException();
         }
 
-        throw new NoConnectionException();
+        $key = $this->generateKey($key);
+
+        if (null !== $expire) {
+            $pipe = $this->client->multi(Redis::PIPELINE);
+            $pipe->hMSet($key, $keyValues);
+            $pipe->expire($key, $expire);
+            $replies = $pipe->exec();
+            $status = $replies[0] ?? false;
+        } else {
+            $status = $this->client->hMSet($key, $keyValues);
+        }
+
+        if (false === $status) {
+            throw new WriteOperationFailedException('Problem with write to key ' . $key);
+        }
+
+        return true;
     }
 
     /**
@@ -286,7 +313,7 @@ class Client implements ClientInterface
             $isDeleted = false;
             while (true) {
                 $keys = $this->client->scan($iterator, $pattern, 1000);
-                if (!empty($keys)) {
+                if (is_array($keys) && !empty($keys)) {
                     $this->delKeys($keys);
                     $isDeleted = true;
                 }
@@ -363,7 +390,7 @@ class Client implements ClientInterface
 
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
-            if (empty($keys)) {
+            if (!is_array($keys) || empty($keys)) {
                 if (0 === (int)$iterator) {
                     break;
                 }
@@ -407,7 +434,7 @@ class Client implements ClientInterface
         $iterator = null;
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 100);
-            if (!empty($keys)) {
+            if (is_array($keys) && !empty($keys)) {
                 $key = $this->removePrefix($keys[0]);
 
                 return $this->client->get($key);
@@ -438,7 +465,7 @@ class Client implements ClientInterface
         $iterator = null;
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
-            if (!empty($keys)) {
+            if (is_array($keys) && !empty($keys)) {
                 array_push($foundKeys, ...$keys);
             }
 
@@ -479,26 +506,23 @@ class Client implements ClientInterface
 
     public function generateKey($value): string
     {
-        $cacheKey = $value;
-
-        if (is_array($value)) {
-            $cacheKey = '';
-            if (isset($value['base'])) {
-                $base = $value['base'];
-                unset($value['base']);
-                $cacheKey = $base.'_';
-            }
-
-            try {
-                $valueStr = json_encode($value, JSON_THROW_ON_ERROR);
-            } catch (JsonException $e) {
-                $valueStr = implode('', $value);
-            }
-
-            $cacheKey .= md5($valueStr);
+        if (!is_array($value)) {
+            return $this->removePrefix((string)$value);
         }
 
-        return $this->removePrefix($cacheKey);
+        $cacheKey = '';
+        if (isset($value['base'])) {
+            $cacheKey = $value['base'] . '_';
+            unset($value['base']);
+        }
+
+        try {
+            $valueStr = json_encode($value, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
+            $valueStr = implode('', $value);
+        }
+
+        return $this->removePrefix($cacheKey . md5($valueStr));
     }
 
     /**
