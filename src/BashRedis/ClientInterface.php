@@ -22,6 +22,12 @@ interface ClientInterface
 
     public function hmget($key, array $fields, ?int $expire = null): array;
 
+    public function incr($key): int;
+
+    public function decr($key): int;
+
+    public function expire($key, int $expire): bool;
+
     public function __call(string $command, array $arguments = []);
 
     public function getExpireTime(string $key);

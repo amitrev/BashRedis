@@ -21,3 +21,11 @@
 ## 2025-05-14 - Internal State Caching
 **Learning:** Calling extension methods like `isConnected()` or PHP functions like `strlen()` repeatedly in tight loops can add up.
 **Action:** Use internal class properties to cache these values once they are known or changed.
+
+## 2025-05-14 - Magic Method and Function Resolution Overhead
+**Learning:** PHP magic methods like `__call` are significantly slower than direct method calls. Similarly, global functions should be imported or prefixed with `\` to avoid dynamic resolution in the global namespace.
+**Action:** Implement frequently used Redis methods explicitly. Import all used functions at the top of the file.
+
+## 2025-05-14 - Pipelined Read-and-Expire
+**Learning:** Refreshing TTL on read (e.g., `hGet` + `expire`) is a common pattern that can be optimized with pipelines to reduce roundtrips.
+**Action:** Add `$expire` parameter to read methods and use pipelines when it's provided.

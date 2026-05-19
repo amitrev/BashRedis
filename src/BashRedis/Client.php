@@ -7,9 +7,20 @@ use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
 
+use function array_push;
 use function call_user_func_array;
+use function defined;
+use function implode;
 use function is_array;
 use function is_callable;
+use function is_int;
+use function is_string;
+use function json_encode;
+use function md5;
+use function sprintf;
+use function strlen;
+use function strpos;
+use function substr;
 
 use JsonException;
 use Redis;
@@ -82,6 +93,51 @@ class Client implements ClientInterface
             $this->client->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_NONE);
             $this->currentSerializer = Redis::SERIALIZER_NONE;
         }
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function incr($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return $this->client->incr($key);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function decr($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return $this->client->decr($key);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function expire($key, int $expire): bool
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return $this->client->expire($key, $expire);
+        }
+
+        throw new NoConnectionException();
     }
 
     /**
@@ -231,6 +287,15 @@ class Client implements ClientInterface
         if ($this->isConnected) {
             $key = $this->generateKey($key);
 
+            if (null !== $expire) {
+                $pipe = $this->client->multi(Redis::PIPELINE);
+                $pipe->hGetAll($key);
+                $pipe->expire($key, $expire);
+                $replies = $pipe->exec();
+
+                return is_array($replies[0]) ? $replies[0] : [];
+            }
+
             return $this->client->hGetAll($key);
         }
 
@@ -245,6 +310,15 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $key = $this->generateKey($key);
+
+            if (null !== $expire) {
+                $pipe = $this->client->multi(Redis::PIPELINE);
+                $pipe->hGet($key, $field);
+                $pipe->expire($key, $expire);
+                $replies = $pipe->exec();
+
+                return $replies[0] ?? false;
+            }
 
             return $this->client->hGet($key, $field);
         }
@@ -290,6 +364,15 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $key = $this->generateKey($key);
+
+            if (null !== $expire) {
+                $pipe = $this->client->multi(Redis::PIPELINE);
+                $pipe->hMGet($key, $fields);
+                $pipe->expire($key, $expire);
+                $replies = $pipe->exec();
+
+                return is_array($replies[0]) ? $replies[0] : [];
+            }
 
             return $this->client->hMGet($key, $fields);
         }
