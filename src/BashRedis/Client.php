@@ -7,7 +7,6 @@ use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
 
-use function array_push;
 use function call_user_func_array;
 use function defined;
 use function implode;
@@ -17,7 +16,6 @@ use function is_int;
 use function is_string;
 use function json_encode;
 use function md5;
-use function sprintf;
 use function strlen;
 use function strncmp;
 use function strpos;
@@ -36,6 +34,7 @@ class Client implements ClientInterface
     private ?array $parameters;
     private ?array $options;
     private bool $isConnected = false;
+    private bool $connectionAttempted = false;
     private ?int $currentSerializer = null;
 
     private static ?int $defaultSerializer = null;
@@ -58,9 +57,11 @@ class Client implements ClientInterface
 
     private function connect(): void
     {
-        if ($this->isConnected) {
+        if ($this->connectionAttempted) {
             return;
         }
+
+        $this->connectionAttempted = true;
 
         $method = 'connect';
         if (isset($this->options['persistent'])) {
@@ -105,6 +106,18 @@ class Client implements ClientInterface
     }
 
     /**
+     * @throws InvalidExpireKeyException
+     */
+    public function getExpireTime(string $key): int
+    {
+        if (isset($this->expires[$key])) {
+            return $this->expires[$key];
+        }
+
+        throw new InvalidExpireKeyException('Key (' . $key . ') not found');
+    }
+
+    /**
      * @throws NoConnectionException
      */
     public function hexists($key, string $field): bool
@@ -114,6 +127,21 @@ class Client implements ClientInterface
             $key = $this->generateKey($key);
 
             return (bool)$this->client->hExists($key, $field);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function decr($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->decr($key);
         }
 
         throw new NoConnectionException();
@@ -203,7 +231,22 @@ class Client implements ClientInterface
         if ($this->isConnected) {
             $key = $this->generateKey($key);
 
-            return $this->client->incr($key);
+            return (int)$this->client->incr($key);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
+    public function ttl($key): int
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (int)$this->client->ttl($key);
         }
 
         throw new NoConnectionException();
@@ -249,36 +292,6 @@ class Client implements ClientInterface
             $key = $this->generateKey($key);
 
             return (int)$this->client->exists($key);
-        }
-
-        throw new NoConnectionException();
-    }
-
-    /**
-     * @throws NoConnectionException
-     */
-    public function ttl($key): int
-    {
-        $this->connect();
-        if ($this->isConnected) {
-            $key = $this->generateKey($key);
-
-            return (int)$this->client->ttl($key);
-        }
-
-        throw new NoConnectionException();
-    }
-
-    /**
-     * @throws NoConnectionException
-     */
-    public function decr($key): int
-    {
-        $this->connect();
-        if ($this->isConnected) {
-            $key = $this->generateKey($key);
-
-            return $this->client->decr($key);
         }
 
         throw new NoConnectionException();
@@ -557,7 +570,11 @@ class Client implements ClientInterface
             while (true) {
                 $keys = $this->client->scan($iterator, $pattern, 1000);
                 if (is_array($keys) && !empty($keys)) {
-                    $this->delKeys($keys);
+                    $strippedKeys = [];
+                    foreach ($keys as $key) {
+                        $strippedKeys[] = $this->removePrefix($key);
+                    }
+                    $this->delKeys($strippedKeys);
                     $isDeleted = true;
                 }
 
@@ -577,6 +594,10 @@ class Client implements ClientInterface
      */
     public function delKeys(array $keys): bool
     {
+        if (empty($keys)) {
+            return false;
+        }
+
         $this->connect();
         if ($this->isConnected) {
             if ($this->prefixLength > 0) {
@@ -658,18 +679,24 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
             if (is_array($keys) && !empty($keys)) {
+                if ($this->prefixLength > 0) {
+                    $this->client->setOption(Redis::OPT_PREFIX, null);
+                }
+
                 $pipe = $this->client->multi(Redis::PIPELINE);
-                $normalizedKeys = [];
                 foreach ($keys as $key) {
-                    $strippedKey = $this->prefixLength > 0 ? $this->removePrefix($key) : $key;
-                    $normalizedKeys[] = $strippedKey;
-                    $pipe->hGetAll($strippedKey);
+                    $pipe->hGetAll($key);
                 }
                 $replies = $pipe->exec();
 
+                if ($this->prefixLength > 0) {
+                    $this->client->setOption(Redis::OPT_PREFIX, $this->prefix);
+                }
+
                 if (is_array($replies)) {
-                    foreach ($normalizedKeys as $index => $key) {
-                        $result[$key] = $replies[$index];
+                    foreach ($keys as $index => $key) {
+                        $strippedKey = $this->removePrefix($key);
+                        $result[$strippedKey] = $replies[$index];
                     }
                 }
             }
@@ -697,9 +724,17 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 100);
             if (is_array($keys) && !empty($keys)) {
-                $strippedKey = $this->prefixLength > 0 ? $this->removePrefix($keys[0]) : $keys[0];
+                $prefixedKey = $keys[0];
 
-                return $this->client->get($strippedKey);
+                if ($this->prefixLength > 0) {
+                    $this->client->setOption(Redis::OPT_PREFIX, null);
+                }
+                $result = $this->client->get($prefixedKey);
+                if ($this->prefixLength > 0) {
+                    $this->client->setOption(Redis::OPT_PREFIX, $this->prefix);
+                }
+
+                return $result;
             }
 
             if (0 === (int)$iterator) {
@@ -728,12 +763,8 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
             if (is_array($keys) && !empty($keys)) {
-                if ($this->prefixLength > 0) {
-                    foreach ($keys as $key) {
-                        $foundKeys[] = $this->removePrefix($key);
-                    }
-                } else {
-                    array_push($foundKeys, ...$keys);
+                foreach ($keys as $key) {
+                    $foundKeys[] = $this->removePrefix($key);
                 }
             }
 
@@ -760,18 +791,6 @@ class Client implements ClientInterface
         }
 
         throw new NoConnectionException();
-    }
-
-    /**
-     * @throws InvalidExpireKeyException
-     */
-    public function getExpireTime(string $key): int
-    {
-        if (isset($this->expires[$key])) {
-            return $this->expires[$key];
-        }
-
-        throw new InvalidExpireKeyException('Key ('.$key.') not found');
     }
 
     public function generateKey($value): string

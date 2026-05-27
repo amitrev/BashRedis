@@ -33,3 +33,11 @@
 ## 2025-05-14 - Safe Magic Method Proxying
 **Learning:** When proxying methods via `__call`, you must handle cases with zero arguments before attempting to manipulate the arguments array.
 **Action:** Always check `!empty($arguments)` before accessing `$arguments[0]`.
+
+## 2025-05-14 - Connection Attempt Caching
+**Learning:** Repeatedly attempting to connect to a down Redis server can add significant latency to each request.
+**Action:** Use a `connectionAttempted` flag to ensure only one connection attempt is made per request lifecycle.
+
+## 2025-05-14 - Consistent Prefix Handling
+**Learning:** Mixing manual prefix stripping/adding with the Redis extension's `OPT_PREFIX` is error-prone. The most robust approach is to keep `OPT_PREFIX` always enabled and ensure all client methods receive un-prefixed keys.
+**Action:** Remove manual `OPT_PREFIX` toggling. Prefix-strip keys returned by `SCAN` before passing them back to other client methods.
