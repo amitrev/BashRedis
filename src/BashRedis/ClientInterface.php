@@ -16,43 +16,15 @@ interface ClientInterface
 
     public function hgetall($key, ?int $expire = null): array;
 
-    public function hdel($key, string $field): int;
-
-    public function hincrby($key, string $field, int $value): int;
-
     public function hget($key, string $field, ?int $expire = null);
 
     public function hmset($key, array $keyValues, ?int $expire = null): bool;
 
     public function hmget($key, array $fields, ?int $expire = null): array;
 
-    public function incr($key): int;
-
-    public function decr($key): int;
-
-    public function incrBy($key, int $value): int;
-
-    public function decrBy($key, int $value): int;
-
-    public function expire($key, int $expire): bool;
-
-    public function exists($key): int;
-
-    public function ttl($key): int;
-
-    public function delByPattern(string $pattern): bool;
-
-    public function delKeys(array $keys): bool;
-
     public function mget(array $keys);
 
-    public function mset(array $data);
-
-    public function findAndHGetAll(string $pattern): array;
-
-    public function findAndGet(string $pattern);
-
-    public function findAllKeys(string $pattern): array;
+    public function mset(array $data, ?int $expire = null);
 
     public function __call(string $command, array $arguments = []);
 

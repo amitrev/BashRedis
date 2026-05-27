@@ -29,3 +29,7 @@
 ## 2025-05-14 - Pipelined Read-and-Expire
 **Learning:** Refreshing TTL on read (e.g., `get` + `expire` or `hGet` + `expire`) is a common pattern that can be optimized with pipelines to reduce roundtrips.
 **Action:** Add `$expire` parameter to read methods and use pipelines when it's provided.
+
+## 2025-05-14 - Safe Magic Method Proxying
+**Learning:** When proxying methods via `__call`, you must handle cases with zero arguments before attempting to manipulate the arguments array.
+**Action:** Always check `!empty($arguments)` before accessing `$arguments[0]`.
