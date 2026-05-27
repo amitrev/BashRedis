@@ -7,6 +7,7 @@ use Bash\Bundle\CacheBundle\Exception\InvalidInputArgumentsException;
 use Bash\Bundle\CacheBundle\Exception\NoConnectionException;
 use Bash\Bundle\CacheBundle\Exception\WriteOperationFailedException;
 
+use function array_push;
 use function call_user_func_array;
 use function defined;
 use function implode;
@@ -37,6 +38,8 @@ class Client implements ClientInterface
     private bool $isConnected = false;
     private ?int $currentSerializer = null;
 
+    private static ?int $defaultSerializer = null;
+
     public function __construct(?array $parameters = null, ?array $options = null)
     {
         $this->parameters = $parameters;
@@ -44,7 +47,11 @@ class Client implements ClientInterface
         $this->prefix = $options['prefix'] ?? '';
         $this->prefixLength = \strlen($this->prefix);
         $this->expires = $options['expires'] ?? [];
-        $this->serialize = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
+
+        if (null === self::$defaultSerializer) {
+            self::$defaultSerializer = defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : Redis::SERIALIZER_PHP;
+        }
+        $this->serialize = self::$defaultSerializer;
 
         $this->client = new Redis();
     }
@@ -75,7 +82,9 @@ class Client implements ClientInterface
             $this->isConnected = true;
             $this->setPrefix($this->prefix);
             $this->setSerialize();
-            $this->client->select($this->parameters['database']);
+            if (0 !== (int)$this->parameters['database']) {
+                $this->client->select($this->parameters['database']);
+            }
         }
     }
 
@@ -379,7 +388,7 @@ class Client implements ClientInterface
             $status = $this->doSet($cacheKey, $key, $data, $expire);
 
             if (false === $status) {
-                throw new WriteOperationFailedException('Problem with write to key '.$cacheKey);
+                throw new WriteOperationFailedException('Problem with write to key ' . $cacheKey);
             }
         }
 
@@ -704,9 +713,7 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
             if (is_array($keys) && !empty($keys)) {
-                foreach ($keys as $key) {
-                    $foundKeys[] = $key;
-                }
+                array_push($foundKeys, ...$keys);
             }
 
             if (0 === (int)$iterator) {
