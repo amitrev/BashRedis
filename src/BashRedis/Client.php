@@ -122,6 +122,21 @@ class Client implements ClientInterface
     /**
      * @throws NoConnectionException
      */
+    public function hincrbyfloat($key, string $field, float $value): float
+    {
+        $this->connect();
+        if ($this->isConnected) {
+            $key = $this->generateKey($key);
+
+            return (float)$this->client->hIncrByFloat($key, $field, $value);
+        }
+
+        throw new NoConnectionException();
+    }
+
+    /**
+     * @throws NoConnectionException
+     */
     public function hlen($key): int
     {
         $this->connect();
@@ -646,7 +661,7 @@ class Client implements ClientInterface
                 $pipe = $this->client->multi(Redis::PIPELINE);
                 $normalizedKeys = [];
                 foreach ($keys as $key) {
-                    $strippedKey = $this->removePrefix($key);
+                    $strippedKey = $this->prefixLength > 0 ? $this->removePrefix($key) : $key;
                     $normalizedKeys[] = $strippedKey;
                     $pipe->hGetAll($strippedKey);
                 }
@@ -682,7 +697,7 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 100);
             if (is_array($keys) && !empty($keys)) {
-                $strippedKey = $this->removePrefix($keys[0]);
+                $strippedKey = $this->prefixLength > 0 ? $this->removePrefix($keys[0]) : $keys[0];
 
                 return $this->client->get($strippedKey);
             }
@@ -713,7 +728,13 @@ class Client implements ClientInterface
         while (true) {
             $keys = $this->client->scan($iterator, $pattern, 1000);
             if (is_array($keys) && !empty($keys)) {
-                array_push($foundKeys, ...$keys);
+                if ($this->prefixLength > 0) {
+                    foreach ($keys as $key) {
+                        $foundKeys[] = $this->removePrefix($key);
+                    }
+                } else {
+                    array_push($foundKeys, ...$keys);
+                }
             }
 
             if (0 === (int)$iterator) {
