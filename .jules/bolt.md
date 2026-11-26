@@ -28,7 +28,11 @@
 
 ## 2025-05-14 - Pipelined Read-and-Expire
 **Learning:** Refreshing TTL on read (e.g., `get` + `expire` or `hGet` + `expire`) is a common pattern that can be optimized with pipelines to reduce roundtrips.
-**Action:** Add `$expire` parameter to read methods and use pipelines when it's provided.
+**Action:** Do not apply it here. This library removed TTL refresh on read on purpose in 1.2.0; the `$expire` argument of `get`/`hget`/`hgetall`/`hmget` is ignored and must stay ignored. (Corrected 2026-11-26: the earlier advice re-added sliding TTLs, so hot keys could never expire.)
+
+## 2026-11-26 - `expires` config is not per-key TTL
+**Learning:** The `expires` option holds named durations (`short`, `medium`, `long`) that callers read with `getExpireTime()`. It is not a map of cache keys to TTLs.
+**Action:** Never look up a cache key in `expires` inside `set()` or other writes.
 
 ## 2025-05-14 - Safe Magic Method Proxying
 **Learning:** When proxying methods via `__call`, you must handle cases with zero arguments before attempting to manipulate the arguments array.
@@ -39,5 +43,9 @@
 **Action:** Use a `connectionAttempted` flag to ensure only one connection attempt is made per request lifecycle.
 
 ## 2025-05-14 - Consistent Prefix Handling
-**Learning:** Mixing manual prefix stripping/adding with the Redis extension's `OPT_PREFIX` is error-prone. The most robust approach is to keep `OPT_PREFIX` always enabled and ensure all client methods receive un-prefixed keys.
-**Action:** Remove manual `OPT_PREFIX` toggling. Prefix-strip keys returned by `SCAN` before passing them back to other client methods.
+**Learning:** Mixing manual prefix stripping/adding with the Redis extension's `OPT_PREFIX` is error-prone. phpredis returns `SCAN` keys with the prefix included. `delKeys()`, `mget()` and `mset()` disable `OPT_PREFIX` and expect those full keys; `findAllKeys()` returns full keys and is public API.
+**Action:** Pass `SCAN` keys unchanged to `delKeys()`/`mget()`/`mset()` and to commands run while `OPT_PREFIX` is disabled. Strip the prefix only for keys handed to methods that re-apply it (`get`, `hGetAll`, ...) or for result-array keys. (Corrected 2026-11-26: the earlier "prefix-strip SCAN keys" advice made `delByPattern()` delete the wrong keys.)
+
+## 2026-11-26 - Always SELECT on connect
+**Learning:** With `pconnect`, a persistent connection is reused across clients configured for different databases (see `doc/Configuration.md`). Skipping `select()` for database 0 leaves the client on whatever database the connection was last switched to.
+**Action:** Always call `select()` on connect, including for database 0.
