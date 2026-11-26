@@ -83,9 +83,9 @@ class Client implements ClientInterface
             $this->isConnected = true;
             $this->setPrefix($this->prefix);
             $this->setSerialize();
-            if (0 !== (int)$this->parameters['database']) {
-                $this->client->select($this->parameters['database']);
-            }
+            // Always select, including database 0: a reused persistent
+            // connection (pconnect) may still be on another client's database.
+            $this->client->select((int)($this->parameters['database'] ?? 0));
         }
     }
 
@@ -313,6 +313,8 @@ class Client implements ClientInterface
     }
 
     /**
+     * $expire is ignored: TTL refresh on read was removed in 1.2.0.
+     *
      * @throws NoConnectionException
      */
     public function get($key, ?int $expire = null)
@@ -320,15 +322,6 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
-
-            if (null !== $expire) {
-                $pipe = $this->client->multi(Redis::PIPELINE);
-                $pipe->get($cacheKey);
-                $pipe->expire($cacheKey, $expire);
-                $replies = $pipe->exec();
-
-                return $replies[0] ?? false;
-            }
 
             return $this->client->get($cacheKey);
         }
@@ -345,22 +338,18 @@ class Client implements ClientInterface
         if ($this->isConnected) {
             $cacheKey = $this->generateKey($key);
 
-            return $this->doSet($cacheKey, $key, $data, $expire);
+            return $this->doSet($cacheKey, $data, $expire);
         }
 
         throw new NoConnectionException();
     }
 
-    private function doSet(string $cacheKey, $key, $data, ?int $expire = null): bool
+    private function doSet(string $cacheKey, $data, ?int $expire = null): bool
     {
         $isInt = is_int($data);
 
         if ($isInt) {
             $this->removeSerialize();
-        }
-
-        if (null === $expire && \is_string($key) && isset($this->expires[$key])) {
-            $expire = $this->expires[$key];
         }
 
         $status = $this->client->set($cacheKey, $data, $expire);
@@ -413,7 +402,7 @@ class Client implements ClientInterface
                 $data = $dataCarry;
             }
 
-            $status = $this->doSet($cacheKey, $key, $data, $expire);
+            $status = $this->doSet($cacheKey, $data, $expire);
 
             if (false === $status) {
                 throw new WriteOperationFailedException('Problem with write to key ' . $cacheKey);
@@ -452,6 +441,8 @@ class Client implements ClientInterface
     }
 
     /**
+     * $expire is ignored: TTL refresh on read was removed in 1.2.0.
+     *
      * @throws NoConnectionException
      */
     public function hgetall($key, ?int $expire = null): array
@@ -460,15 +451,6 @@ class Client implements ClientInterface
         if ($this->isConnected) {
             $key = $this->generateKey($key);
 
-            if (null !== $expire) {
-                $pipe = $this->client->multi(Redis::PIPELINE);
-                $pipe->hGetAll($key);
-                $pipe->expire($key, $expire);
-                $replies = $pipe->exec();
-
-                return is_array($replies[0]) ? $replies[0] : [];
-            }
-
             return $this->client->hGetAll($key);
         }
 
@@ -476,6 +458,8 @@ class Client implements ClientInterface
     }
 
     /**
+     * $expire is ignored: TTL refresh on read was removed in 1.2.0.
+     *
      * @throws NoConnectionException
      */
     public function hget($key, string $field, ?int $expire = null)
@@ -483,15 +467,6 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $key = $this->generateKey($key);
-
-            if (null !== $expire) {
-                $pipe = $this->client->multi(Redis::PIPELINE);
-                $pipe->hGet($key, $field);
-                $pipe->expire($key, $expire);
-                $replies = $pipe->exec();
-
-                return $replies[0] ?? false;
-            }
 
             return $this->client->hGet($key, $field);
         }
@@ -530,6 +505,8 @@ class Client implements ClientInterface
     }
 
     /**
+     * $expire is ignored: TTL refresh on read was removed in 1.2.0.
+     *
      * @throws NoConnectionException
      */
     public function hmget($key, array $fields, ?int $expire = null): array
@@ -537,15 +514,6 @@ class Client implements ClientInterface
         $this->connect();
         if ($this->isConnected) {
             $key = $this->generateKey($key);
-
-            if (null !== $expire) {
-                $pipe = $this->client->multi(Redis::PIPELINE);
-                $pipe->hMGet($key, $fields);
-                $pipe->expire($key, $expire);
-                $replies = $pipe->exec();
-
-                return is_array($replies[0]) ? $replies[0] : [];
-            }
 
             return $this->client->hMGet($key, $fields);
         }
@@ -570,12 +538,11 @@ class Client implements ClientInterface
             while (true) {
                 $keys = $this->client->scan($iterator, $pattern, 1000);
                 if (is_array($keys) && !empty($keys)) {
-                    $strippedKeys = [];
-                    foreach ($keys as $key) {
-                        $strippedKeys[] = $this->removePrefix($key);
+                    // SCAN returns full keys (prefix included) and delKeys()
+                    // disables OPT_PREFIX, so the keys must be passed as-is.
+                    if ($this->delKeys($keys)) {
+                        $isDeleted = true;
                     }
-                    $this->delKeys($strippedKeys);
-                    $isDeleted = true;
                 }
 
                 if (0 === (int)$iterator) {
@@ -749,6 +716,9 @@ class Client implements ClientInterface
      * Finds all keys matching a pattern using SCAN.
      * Optimization: more efficient array merging.
      *
+     * Returns full keys (prefix included), as in 1.x/2.0.x, so the result can
+     * be passed straight to delKeys()/mget(), which disable OPT_PREFIX.
+     *
      * @throws NoConnectionException
      */
     public function findAllKeys(string $pattern): array
@@ -764,7 +734,7 @@ class Client implements ClientInterface
             $keys = $this->client->scan($iterator, $pattern, 1000);
             if (is_array($keys) && !empty($keys)) {
                 foreach ($keys as $key) {
-                    $foundKeys[] = $this->removePrefix($key);
+                    $foundKeys[] = $key;
                 }
             }
 
